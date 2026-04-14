@@ -2,153 +2,31 @@
 {% block title %}Dashboard — TrendWatch{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-  <h2 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-2">
-    Trend Observatory
-  </h2>
-  <p class="text-slate-400">Real-time trend monitoring &amp; intelligence</p>
+<div class="mb-8 flex items-center justify-between">
+  <div>
+    <h2 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-2">
+      Trend Observatory
+    </h2>
+    <p class="text-slate-400">Real-time trend monitoring &amp; intelligence</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <a href="/statistics"
+       class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100
+              font-medium rounded-lg transition border border-slate-700 hover:border-slate-600">
+      📊 View Stats
+    </a>
+    <a href="/trends-explorer"
+       class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100
+              font-medium rounded-lg transition border border-slate-700 hover:border-slate-600">
+      🔍 Explore All
+    </a>
+  </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+<div class="grid grid-cols-1 gap-8">
 
-  <!-- ================================================================
-       FORM — colonne gauche (2/5) — ADMIN UNIQUEMENT
-  ================================================================= -->
-  {% if is_admin %}
-  <section class="lg:col-span-2">
-    <div class="relative group">
-      <div class="absolute -inset-0.5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
-      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-        <h2 class="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-5 flex items-center gap-2">
-          <span class="text-xl">➕</span> Add Trend
-        </h2>
-
-      <form method="POST" action="/trends/add" class="space-y-5">
-
-        <!-- Topic -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2" for="topic">
-            Trend Name <span class="text-red-400">*</span>
-          </label>
-          <input id="topic" name="topic" type="text" required
-                 placeholder="e.g., quiet luxury, gorpcore…"
-                 class="w-full bg-slate-800/50 border border-slate-600/50 focus:border-cyan-500/50
-                        rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                        focus:outline-none focus:ring-1 focus:ring-cyan-500/30
-                        transition duration-200" />
-        </div>
-
-        <!-- Sources -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-3">Sources</label>
-          <div class="grid grid-cols-2 gap-2">
-            {% for p in platforms %}
-            <label class="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer
-                          bg-slate-800/30 border border-slate-700/30 hover:border-cyan-500/30
-                          transition duration-200 hover:bg-cyan-500/5">
-              <input type="checkbox" name="sources" value="{{ p }}"
-                     class="accent-cyan-500" />
-              <span class="text-sm text-slate-300">{{ p.replace("_", " ").title() }}</span>
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-
-        <!-- Hashtags (tag input) -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">Hashtags</label>
-          <div id="tag-container"
-               class="flex flex-wrap gap-2 border border-slate-600/50 bg-slate-800/30 rounded-lg p-3 min-h-[2.5rem] cursor-text focus-within:border-cyan-500/50 transition"
-               onclick="document.getElementById('tag-input').focus()">
-          </div>
-          <input id="tag-input" type="text"
-                 placeholder="Enter tags + Enter or comma"
-                 class="mt-2 w-full bg-slate-800/50 border border-slate-600/50
-                        rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                        focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30
-                        transition duration-200" />
-          <input type="hidden" name="hashtags_raw" id="hashtags_raw" />
-        </div>
-
-        <!-- Formats -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-3">Suggested Formats</label>
-          <div class="flex flex-wrap gap-2">
-            {% for f in formats %}
-            <label class="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer
-                          bg-slate-800/30 border border-slate-700/30 hover:border-cyan-500/30
-                          rounded-full transition duration-200 hover:bg-cyan-500/5">
-              <input type="checkbox" name="suggested_formats" value="{{ f }}"
-                     class="accent-cyan-500 w-4 h-4" />
-              <span class="text-slate-300">{{ f }}</span>
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-
-        <!-- Pipeline target -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-3">Pipeline Target</label>
-          <div class="flex gap-3">
-            <label class="flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer
-                          bg-slate-800/30 border border-slate-700/30 hover:border-cyan-500/30
-                          transition duration-200 has-checked:border-cyan-500/50 has-checked:bg-cyan-500/10">
-              <input type="radio" name="pipeline_target" value="digital" checked
-                     class="accent-cyan-500" />
-              <span class="text-sm text-slate-300">💻 Digital</span>
-            </label>
-            <label class="flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer
-                          bg-slate-800/30 border border-slate-700/30 hover:border-cyan-500/30
-                          transition duration-200 has-checked:border-cyan-500/50 has-checked:bg-cyan-500/10">
-              <input type="radio" name="pipeline_target" value="physical"
-                     class="accent-cyan-500" />
-              <span class="text-sm text-slate-300">📦 Physical</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Score -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">
-            Score <span id="score-display" class="text-cyan-400 font-bold">0</span>
-            <span class="text-slate-500">/100</span>
-          </label>
-          <input type="range" name="score" min="0" max="100" value="0"
-                 oninput="document.getElementById('score-display').textContent=this.value"
-                 class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
-        </div>
-
-        <!-- Notes -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2" for="notes">
-            Notes &amp; Insights
-          </label>
-          <textarea id="notes" name="notes" rows="3"
-                    placeholder="Context, analysis, source…"
-                    class="w-full bg-slate-800/50 border border-slate-600/50
-                           rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500
-                           focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30
-                           transition duration-200 resize-none"></textarea>
-        </div>
-
-        <button type="submit"
-                class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500
-                       text-white font-semibold rounded-xl px-4 py-3 transition duration-200
-                       shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40
-                       border border-cyan-400/30 hover:border-cyan-300/50
-                       transform hover:scale-105 text-sm">
-          ✨ Add Trend
-        </button>
-      </form>
-      </div>
-    </div>
-  </section>
-  {% endif %}
-
-  <!-- ================================================================
-       LISTE DES TENDANCES — colonne droite
-  ================================================================= -->
-  <section class="{% if is_admin %}lg:col-span-3{% else %}lg:col-span-5{% endif %}">
+  <!-- Recent Trends Section -->
+  <section>
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-2xl font-bold text-slate-100">Recent Trends</h3>
       {% if not is_admin %}
@@ -237,52 +115,4 @@
 
 </div>
 
-<!-- Tag input script (admin only) -->
-{% if is_admin %}
-<script>
-  const input = document.getElementById('tag-input');
-  const container = document.getElementById('tag-container');
-  const hidden = document.getElementById('hashtags_raw');
-  let tags = [];
-
-  function renderTags() {
-    container.querySelectorAll('.tag-chip').forEach(el => el.remove());
-    tags.forEach((tag, i) => {
-      const chip = document.createElement('span');
-      chip.className = 'tag-chip';
-      chip.innerHTML = `${tag} <button type="button" onclick="removeTag(${i})">&times;</button>`;
-      container.insertBefore(chip, input);
-    });
-    hidden.value = tags.join(',');
-  }
-
-  function addTag(raw) {
-    const clean = raw.trim().replace(/^#+/, '');
-    if (clean && !tags.includes('#' + clean)) {
-      tags.push('#' + clean);
-      renderTags();
-    }
-  }
-
-  function removeTag(i) {
-    tags.splice(i, 1);
-    renderTags();
-  }
-
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addTag(input.value);
-      input.value = '';
-    }
-    if (e.key === 'Backspace' && input.value === '' && tags.length) {
-      removeTag(tags.length - 1);
-    }
-  });
-
-  input.addEventListener('blur', () => {
-    if (input.value.trim()) { addTag(input.value); input.value = ''; }
-  });
-</script>
-{% endif %}
 {% endblock %}

@@ -6,7 +6,7 @@
   <title>{% block title %}TrendWatch{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/app.css" />
   <style>
     :root {
@@ -84,43 +84,8 @@
 </head>
 <body class="h-full">
 
-  <!-- Header -->
-  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/40 border-b border-slate-700/50">
-    <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-3 group">
-        <div class="text-3xl">&#128269;</div>
-        <h1 class="text-2xl font-bold tracking-tighter bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent">
-          TrendWatch
-        </h1>
-      </a>
-
-      {% if user %}
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-3">
-          <img src="{{ user.picture }}" alt="avatar"
-               class="w-9 h-9 rounded-full ring-1 ring-cyan-500/50" />
-          <div class="hidden sm:block">
-            <p class="text-sm font-medium text-slate-100">{{ user.name }}</p>
-            {% if user.role == "admin" %}
-            <span class="text-xs text-cyan-400 font-semibold">● Admin</span>
-            {% else %}
-            <span class="text-xs text-slate-400 font-semibold">● Viewer</span>
-            {% endif %}
-          </div>
-        </div>
-        <a href="/logout"
-           class="text-sm text-slate-300 hover:text-cyan-400 transition px-3 py-1.5 border border-slate-700 rounded-lg hover:border-cyan-500/50 hover:bg-cyan-500/5">
-          Logout
-        </a>
-      </div>
-      {% else %}
-      <a href="/login"
-         class="text-sm text-slate-300 hover:text-cyan-400 transition px-3 py-1.5 border border-slate-700 rounded-lg hover:border-cyan-500/50 hover:bg-cyan-500/5">
-        Sign In
-      </a>
-      {% endif %}
-    </nav>
-  </header>
+  <!-- Navigation -->
+  {% include "components/navbar.html" %}
 
   <!-- Flash messages -->
   {% if flash %}

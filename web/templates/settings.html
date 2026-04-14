@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Settings — TrendWatch{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+  <h2 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-2">
+    Settings
+  </h2>
+  <p class="text-slate-400">Manage your profile and preferences</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+  <!-- Profile Section -->
+  <section class="lg:col-span-2">
+    <div class="relative group">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-slate-100 mb-6 flex items-center gap-2">
+          <span class="text-xl">👤</span> Profile Information
+        </h3>
+
+        <div class="space-y-6">
+          <!-- User Avatar -->
+          <div class="flex items-start gap-6">
+            <img src="{{ user.picture }}" alt="avatar"
+                 class="w-20 h-20 rounded-full ring-2 ring-cyan-500/50 shadow-lg shadow-cyan-500/20" />
+            <div class="flex-1">
+              <h4 class="text-slate-100 font-semibold">Profile Picture</h4>
+              <p class="text-sm text-slate-400 mt-1">Updated from Auth0</p>
+            </div>
+          </div>
+
+          <div class="border border-slate-700/30"></div>
+
+          <!-- User Info Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Name -->
+            <div>
+              <label class="block text-sm font-semibold text-slate-300 mb-2">Full Name</label>
+              <div class="px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-lg text-slate-300">
+                {{ user.name }}
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div>
+              <label class="block text-sm font-semibold text-slate-300 mb-2">Email</label>
+              <div class="px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-lg text-slate-300 break-all">
+                {{ user.email }}
+              </div>
+            </div>
+
+            <!-- Role -->
+            <div>
+              <label class="block text-sm font-semibold text-slate-300 mb-2">Role</label>
+              <div class="px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-lg">
+                <span class="inline-flex items-center gap-2">
+                  {% if user.role == "admin" %}
+                    <span class="text-amber-400">⚡</span>
+                    <span class="text-slate-300 font-medium">Administrator</span>
+                  {% else %}
+                    <span class="text-cyan-400">👁️</span>
+                    <span class="text-slate-300 font-medium">Viewer</span>
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+
+            <!-- User ID -->
+            <div>
+              <label class="block text-sm font-semibold text-slate-300 mb-2">User ID</label>
+              <div class="px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-lg text-slate-400 text-sm font-mono break-all">
+                {{ user.sub }}
+              </div>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-500 mt-2">Profile information is managed through Auth0 and cannot be edited here.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Preferences & Actions -->
+  <section class="space-y-6">
+    <!-- Preferences -->
+    <div class="relative group">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
+          <span class="text-xl">⚙️</span> Preferences
+        </h3>
+
+        <div class="space-y-4">
+          <!-- Theme -->
+          <div>
+            <label class="flex items-center justify-between">
+              <span class="text-sm text-slate-300 font-medium">Dark Mode</span>
+              <span class="text-cyan-400 text-sm">Active</span>
+            </label>
+            <p class="text-xs text-slate-500 mt-1">Always enabled on TrendWatch</p>
+          </div>
+
+          <div class="border border-slate-700/30"></div>
+
+          <!-- Notifications -->
+          <div>
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-sm text-slate-300 font-medium">Email Notifications</span>
+              <input type="checkbox" class="accent-cyan-500" disabled />
+            </label>
+            <p class="text-xs text-slate-500 mt-1">Coming soon</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Actions -->
+    <div class="relative group">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-red-500/20 to-rose-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
+          <span class="text-xl">🔐</span> Account
+        </h3>
+
+        <div class="space-y-3">
+          <a href="/logout"
+             class="block w-full px-4 py-2.5 bg-slate-800/50 hover:bg-red-500/10 border border-slate-700/50 hover:border-red-500/30 text-slate-300 hover:text-red-400 rounded-lg transition duration-200 text-center text-sm font-medium">
+            Sign Out
+          </a>
+
+          <p class="text-xs text-slate-500 text-center mt-4">
+            <a href="https://auth0.com" target="_blank" class="text-cyan-400 hover:text-cyan-300 transition">
+              Manage via Auth0 →
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="relative group">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-slate-700/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
+          <span class="text-xl">ℹ️</span> About
+        </h3>
+
+        <div class="text-xs text-slate-400 space-y-2">
+          <p>
+            <span class="text-slate-300 font-medium">TrendWatch</span><br/>
+            Intelligent trend monitoring powered by Claude AI
+          </p>
+          <p>
+            <span class="text-slate-300 font-medium">Version</span><br/>
+            1.0.0
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+{% endblock %}

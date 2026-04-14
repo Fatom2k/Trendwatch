@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Trends Explorer — TrendWatch{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-8">
+  <h2 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-2">
+    Trends Explorer
+  </h2>
+  <p class="text-slate-400">Browse all {{ total_trends }} collected trends from active sources</p>
+</div>
+
+<!-- Status Bar -->
+<div class="mb-6 p-4 rounded-lg bg-slate-800/30 border border-slate-700/50 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div class="w-3 h-3 rounded-full {% if 'connected' in es_status %}bg-emerald-500{% elif 'disconnected' in es_status %}bg-red-500{% else %}bg-amber-500{% endif %}"></div>
+    <span class="text-sm text-slate-300">
+      Elasticsearch: <span class="font-semibold {% if 'connected' in es_status %}text-emerald-400{% elif 'disconnected' in es_status %}text-red-400{% else %}text-amber-400{% endif %}">{{ es_status | upper }}</span>
+    </span>
+  </div>
+  <span class="text-sm text-slate-400">{{ total_trends }} trends available</span>
+</div>
+
+<!-- Trends Grid -->
+{% if trends %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for t in trends %}
+  <div class="group relative">
+    <!-- Hover glow -->
+    <div class="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/10 to-transparent rounded-xl opacity-0 group-hover:opacity-100 blur-lg transition duration-500"></div>
+
+    <div class="relative bg-slate-900/40 backdrop-blur-md border border-slate-700/50 group-hover:border-cyan-500/30 rounded-xl p-5 transition duration-300 h-full flex flex-col">
+
+      <!-- Top: Topic + Platform -->
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-bold text-slate-100 text-base truncate">{{ t.topic }}</h3>
+          <p class="text-xs text-slate-500 mt-1">{{ t.platform }} • {{ t.detected_at[:10] if t.detected_at else "Unknown" }}</p>
+        </div>
+
+        <!-- Score Badge -->
+        <div class="shrink-0 flex items-center justify-center w-12 h-12 rounded-full text-base font-bold text-white
+                    {% if t.score >= 70 %}
+                      bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30
+                    {% elif t.score >= 40 %}
+                      bg-gradient-to-br from-amber-500 to-amber-600 shadow-lg shadow-amber-500/30
+                    {% else %}
+                      bg-gradient-to-br from-rose-500 to-rose-600 shadow-lg shadow-rose-500/30
+                    {% endif %}">
+          {{ t.score }}
+        </div>
+      </div>
+
+      <!-- Hashtags -->
+      {% if t.hashtags %}
+      <div class="flex flex-wrap gap-2 mb-3">
+        {% for h in t.hashtags[:4] %}
+        <span class="text-xs px-2 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 rounded-full truncate">
+          {{ h }}
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Summary -->
+      {% if t.summary %}
+      <p class="text-sm text-slate-400 mb-3 leading-relaxed line-clamp-2">
+        "{{ t.summary }}"
+      </p>
+      {% endif %}
+
+      <!-- Metrics -->
+      <div class="text-xs text-slate-500 space-y-1 mb-3 py-3 border-t border-slate-700/30">
+        {% if t.demand %}
+        <div class="flex justify-between">
+          <span>Demand Volume:</span>
+          <span class="text-cyan-300">{{ t.demand.volume | default(0) | int }}</span>
+        </div>
+        {% endif %}
+        {% if t.saturation %}
+        <div class="flex justify-between">
+          <span>Creator Count:</span>
+          <span class="text-slate-300">{{ t.saturation.creator_count | default(0) }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-between text-xs pt-3 border-t border-slate-700/30 mt-auto">
+        {% if t.suggested_formats %}
+        <span class="text-slate-400">
+          📋 <span class="text-slate-300">{{ t.suggested_formats | join(", ") }}</span>
+        </span>
+        {% endif %}
+        {% if t.pipeline_target %}
+        <span class="{% if t.pipeline_target == 'physical' %}text-amber-400{% else %}text-cyan-400{% endif %}">
+          {{ "📦 Physical" if t.pipeline_target == "physical" else "💻 Digital" }}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="relative group">
+  <div class="absolute -inset-0.5 bg-gradient-to-r from-slate-700/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 blur-lg transition duration-500"></div>
+  <div class="relative bg-slate-900/40 backdrop-blur-md border border-dashed border-slate-600/50 rounded-xl p-16 text-center">
+    <div class="text-5xl mb-4 opacity-50">🔍</div>
+    <p class="text-slate-400 font-medium">No trends collected yet</p>
+    <p class="text-slate-500 text-sm mt-2">
+      Run the agent to start collecting trends from active sources
+    </p>
+    <p class="text-slate-600 text-xs mt-4">
+      Or add trends manually from the dashboard
+    </p>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
