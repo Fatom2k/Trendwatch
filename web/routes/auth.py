@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 async def login_page(request: Request):
     if get_current_user(request):
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html", {"request": request})
 
 
 @router.get("/auth/login")
@@ -71,6 +71,7 @@ async def logout(request: Request):
 async def unauthorized(request: Request):
     user = get_current_user(request)
     return templates.TemplateResponse(
+        request,
         "unauthorized.html",
         {"request": request, "user": user},
         status_code=403,

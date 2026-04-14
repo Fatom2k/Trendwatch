@@ -52,6 +52,7 @@ async def dashboard(request: Request):
             logger.warning("Erreur fetch tendances : %s", exc)
 
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
         {
             "request":   request,
