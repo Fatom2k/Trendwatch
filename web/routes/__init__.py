@@ -1,0 +1,1 @@
+"""TrendWatch web routes package."""
