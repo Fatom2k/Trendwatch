@@ -35,7 +35,7 @@ async def login_page(request: Request):
     """Affiche la page de connexion. Redirige vers / si déjà connecté."""
     if get_current_user(request):
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("login.html", context={"request": request})
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 @router.get("/auth/login")
@@ -88,6 +88,6 @@ async def unauthorized(request: Request):
     user = get_current_user(request)
     return templates.TemplateResponse(
         "unauthorized.html",
-        context={"request": request, "user": user},
+        {"request": request, "user": user},
         status_code=403,
     )

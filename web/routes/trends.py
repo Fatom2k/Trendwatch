@@ -61,7 +61,7 @@ async def dashboard(request: Request):
 
     return templates.TemplateResponse(
         "dashboard.html",
-        context={
+        {
             "request":   request,
             "user":      user,
             "is_admin":  is_admin,
