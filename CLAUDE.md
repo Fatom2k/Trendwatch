@@ -100,13 +100,25 @@ Requirements pins `jinja2==3.1.3` because version 3.1.4 has a cache-key bug with
 - `elasticsearch_host` is `http://localhost:9200` locally, `http://elasticsearch:9200` in containers.
 - Health check ensures the index exists before agent startup.
 
-### Environment Variables
+### Environment Variables & Secrets
+
+**⚠️ NEVER commit `.env`** — it contains API keys and secrets. Use `.env.example` as template.
 
 Required for full operation:
 - `ANTHROPIC_API_KEY` — Claude API
 - `TIKTOK_API_KEY`, `TWITTER_BEARER_TOKEN`, `INSTAGRAM_ACCESS_TOKEN` — Social APIs
 - `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET` — Web OAuth
 - Optional: `ELASTICSEARCH_HOST`, `SCHEDULE_CADENCE`, `SCHEDULE_TIME`, `TIMEZONE`
+
+**Auth0 Setup (Critical):**
+1. Create account at https://auth0.com (free tier)
+2. Create Application → Regular Web Application
+3. Enable Google social connection
+4. In Application Settings, configure **Allowed Callback URLs**:
+   - Set in Auth0 Dashboard: `https://your-domain.com/auth/callback`
+   - Set in `.env`: `AUTH0_CALLBACK_URL=https://your-domain.com/auth/callback`
+   - **MUST match exactly** (protocol, domain, port, path) or OAuth will fail with "Callback URL mismatch"
+5. After `.env` changes, restart container: `docker compose down web && docker compose up -d web`
 
 See `.env.example` for all options and defaults.
 
@@ -144,9 +156,19 @@ Edit `analysis/scorer.py`. The score combines demand, saturation, and velocity i
 - Integration tests patch `_build_sources()` to inject mock data.
 - No real API calls in tests; use fixtures or `MagicMock`.
 
-### Web Routes
+### Web Routes & Templates
 
-Routes in `web/routes/` are registered in `web/app.py`. Template responses require the `context=` parameter (Starlette 0.29+ compatibility).
+Routes in `web/routes/` are registered in `web/app.py`. 
+
+**Jinja2Templates.TemplateResponse signature (Starlette 0.29+):**
+```python
+# Correct: request must be FIRST argument, then name, then context (positional)
+templates.TemplateResponse(request, "template.html", {"request": request})
+
+# Wrong: these will fail
+templates.TemplateResponse("template.html", {"request": request})
+templates.TemplateResponse("template.html", context={"request": request})
+```
 
 ## Common Git Patterns
 
