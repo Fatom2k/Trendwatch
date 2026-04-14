@@ -13,9 +13,9 @@
 <!-- Status Bar -->
 <div class="mb-6 p-4 rounded-lg bg-slate-800/30 border border-slate-700/50 flex items-center justify-between">
   <div class="flex items-center gap-3">
-    <div class="w-3 h-3 rounded-full {% if 'connected' in es_status %}bg-emerald-500{% elif 'disconnected' in es_status %}bg-red-500{% else %}bg-amber-500{% endif %}"></div>
+    <div class="w-3 h-3 rounded-full {% if es_status == 'connected' %}bg-emerald-500{% elif es_status == 'disconnected' %}bg-red-500{% else %}bg-amber-500{% endif %}"></div>
     <span class="text-sm text-slate-300">
-      Elasticsearch: <span class="font-semibold {% if 'connected' in es_status %}text-emerald-400{% elif 'disconnected' in es_status %}text-red-400{% else %}text-amber-400{% endif %}">{{ es_status | upper }}</span>
+      Elasticsearch: <span class="font-semibold {% if es_status == 'connected' %}text-emerald-400{% elif es_status == 'disconnected' %}text-red-400{% else %}text-amber-400{% endif %}">{{ es_status | upper }}</span>
     </span>
   </div>
   <span class="text-sm text-slate-400">{{ total_trends }} trends available</span>
