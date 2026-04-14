@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-gray-50">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}TrendWatch{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="h-full font-sans text-gray-800">
+
+  <!-- Navbar -->
+  <nav class="bg-indigo-700 shadow-md">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 text-white font-bold text-xl tracking-tight">
+        <span class="text-2xl">&#128269;</span> TrendWatch
+      </a>
+      {% if user %}
+      <div class="flex items-center gap-3">
+        <img src="{{ user.picture }}" alt="avatar"
+             class="w-8 h-8 rounded-full ring-2 ring-white" />
+        <span class="text-white text-sm hidden sm:inline">{{ user.name }}</span>
+        <a href="/logout"
+           class="text-indigo-200 hover:text-white text-sm transition">Se d&#233;connecter</a>
+      </div>
+      {% else %}
+      <a href="/login"
+         class="text-indigo-200 hover:text-white text-sm transition">Connexion</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Flash message -->
+  {% if flash %}
+  <div class="max-w-5xl mx-auto px-4 pt-4">
+    <div class="flash-{{ flash.type }} rounded-lg px-4 py-3 text-sm">
+      {{ flash.message }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Main content -->
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="text-center text-xs text-gray-400 py-6">
+    TrendWatch &mdash; {{ now.year if now else "2025" }}
+  </footer>
+
+</body>
+</html>
