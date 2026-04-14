@@ -121,3 +121,10 @@ class Settings:
     exploding_topics_api_key: str = _env("EXPLODING_TOPICS_API_KEY")
     exploding_topics_limit: int = _env_int("EXPLODING_TOPICS_LIMIT", 50)
     exploding_topics_category: str = _env("EXPLODING_TOPICS_CATEGORY", "")
+
+    # ------------------------------------------------------------------
+    # Elasticsearch
+    # ------------------------------------------------------------------
+    elasticsearch_host: str = _env("ELASTICSEARCH_HOST", "http://localhost:9200")
+    elasticsearch_index: str = _env("ELASTICSEARCH_INDEX", "trendwatch_trends")
+    elasticsearch_enabled: bool = _env("ELASTICSEARCH_ENABLED", "true").lower() == "true"

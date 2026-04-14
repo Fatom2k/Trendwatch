@@ -1,7 +1,7 @@
 """Core orchestrator for the TrendWatch agent.
 
 This module defines TrendWatchAgent, the main entry point that coordinates
-a full watch cycle: collect → analyze → score → report.
+a full watch cycle: collect → analyze → store → report.
 """
 
 from __future__ import annotations
@@ -30,7 +30,8 @@ class TrendWatchAgent:
     2. Analyse and cluster the collected trends.
     3. Score each trend on demand / saturation / velocity axes.
     4. Generate an AI-powered summary via the Claude API.
-    5. Write a structured report to the output directory.
+    5. Persist trends to Elasticsearch (if configured).
+    6. Write a structured report to the output directory.
 
     Args:
         settings: Global configuration.  Defaults to :class:`~config.settings.Settings`.
@@ -43,6 +44,7 @@ class TrendWatchAgent:
         self._clusterer = TrendClusterer()
         self._summarizer = TrendSummarizer(api_key=self.settings.anthropic_api_key)
         self._writer = ReportWriter(output_dir=self.settings.output_dir)
+        self._store = self._build_store()
 
     # ------------------------------------------------------------------
     # Public interface
@@ -62,8 +64,15 @@ class TrendWatchAgent:
             return ""
 
         trends = self.analyze(trends)
-        report_path = self.report(trends)
 
+        # Persist to Elasticsearch when configured
+        if self._store:
+            try:
+                self._store.index_batch(trends)
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Elasticsearch indexing failed: %s", exc)
+
+        report_path = self.report(trends)
         logger.info("Cycle complete.  Report: %s", report_path)
         return report_path
 
@@ -102,20 +111,16 @@ class TrendWatchAgent:
             Enriched trends with ``score``, ``cluster_id`` and ``summary``
             fields populated.
         """
-        # Score each trend
         scored = [self._scorer.score(t) for t in trends]
 
-        # Filter by minimum score threshold
         filtered = [
             t for t in scored
             if t.score >= self.settings.min_score_threshold
         ]
         logger.info("%d/%d trends passed the score threshold.", len(filtered), len(scored))
 
-        # Cluster by theme
         clustered = self._clusterer.cluster(filtered)
 
-        # AI summary if API key is configured
         if self.settings.anthropic_api_key:
             clustered = self._summarizer.summarize_batch(clustered)
 
@@ -150,9 +155,26 @@ class TrendWatchAgent:
                     settings=self.settings,
                 )
             )
-        # Additional sources (TikTok, Instagram, Twitter) are instantiated
-        # here once the corresponding API keys are configured.
         return sources
+
+    def _build_store(self):
+        """Instantiate the Elasticsearch store if ES is enabled and reachable."""
+        if not self.settings.elasticsearch_enabled:
+            return None
+        try:
+            from storage.elasticsearch import TrendStore
+            store = TrendStore(
+                host=self.settings.elasticsearch_host,
+                index_name=self.settings.elasticsearch_index,
+            )
+            if store.ping():
+                store.ensure_index()
+                logger.info("Elasticsearch store ready at %s.", self.settings.elasticsearch_host)
+                return store
+            logger.warning("Elasticsearch unreachable at %s — storage disabled.", self.settings.elasticsearch_host)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not initialise Elasticsearch store: %s", exc)
+        return None
 
 
 if __name__ == "__main__":
