@@ -14,7 +14,7 @@ import logging
 import os
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from web.auth import (
@@ -30,12 +30,12 @@ templates = Jinja2Templates(directory="web/templates")
 logger = logging.getLogger(__name__)
 
 
-@router.get("/login", response_class=HTMLResponse)
+@router.get("/login")
 async def login_page(request: Request):
     """Affiche la page de connexion. Redirige vers / si déjà connecté."""
     if get_current_user(request):
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", context={"request": request})
 
 
 @router.get("/auth/login")
@@ -50,7 +50,7 @@ async def auth_login(request: Request):
 
 @router.get("/auth/callback", name="auth_callback")
 async def auth_callback(request: Request):
-    """Callback OAuth0 : vérifie l’email, assigne le rôle, ouvre la session."""
+    """Callback OAuth0 : vérifie l'email, assigne le rôle, ouvre la session."""
     token = await oauth.auth0.authorize_access_token(request)
     user_info = token.get("userinfo") or await oauth.auth0.userinfo(token=token)
     user_dict = dict(user_info)
@@ -82,12 +82,12 @@ async def logout(request: Request):
     return RedirectResponse(url=logout_url, status_code=302)
 
 
-@router.get("/unauthorized", response_class=HTMLResponse)
+@router.get("/unauthorized")
 async def unauthorized(request: Request):
-    """Page 403 affichée quand l’email n’est pas dans la whitelist."""
+    """Page 403 affichée quand l'email n'est pas dans la whitelist."""
     user = get_current_user(request)
     return templates.TemplateResponse(
         "unauthorized.html",
-        {"request": request, "user": user},
+        context={"request": request, "user": user},
         status_code=403,
     )

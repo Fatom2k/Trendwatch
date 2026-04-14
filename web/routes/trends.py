@@ -11,7 +11,7 @@ import logging
 from typing import List
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from config.settings import Settings
@@ -41,7 +41,7 @@ def _get_store():
         return None
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/")
 async def dashboard(request: Request):
     """Dashboard principal. Accessible à tous les utilisateurs authentifiés."""
     redirect = login_required(request)
@@ -61,7 +61,7 @@ async def dashboard(request: Request):
 
     return templates.TemplateResponse(
         "dashboard.html",
-        {
+        context={
             "request":   request,
             "user":      user,
             "is_admin":  is_admin,
@@ -84,7 +84,7 @@ async def add_trend(
     notes: str = Form(default=""),
     score: int = Form(default=0),
 ):
-    """Crée une tendance depuis le formulaire et l’indexe dans ES.
+    """Crée une tendance depuis le formulaire et l'indexe dans ES.
 
     Réservé aux utilisateurs avec le rôle ``admin``.
     """
@@ -117,18 +117,18 @@ async def add_trend(
             store.index_trend(trend)
             request.session["flash"] = {
                 "type": "success",
-                "message": f"\u2705 Tendance \u00ab\u00a0{topic}\u00a0\u00bb ajout\u00e9e.",
+                "message": f"✅ Tendance « {topic} » ajoutée.",
             }
         except Exception as exc:
             logger.error("Erreur indexation : %s", exc)
             request.session["flash"] = {
                 "type": "error",
-                "message": f"\u274c Erreur ES\u00a0: {exc}",
+                "message": f"❌ Erreur ES : {exc}",
             }
     else:
         request.session["flash"] = {
             "type": "warning",
-            "message": "\u26a0\ufe0f Elasticsearch non disponible. Tendance non persist\u00e9e.",
+            "message": "⚠️ Elasticsearch non disponible. Tendance non persistée.",
         }
 
     return RedirectResponse(url="/", status_code=303)
