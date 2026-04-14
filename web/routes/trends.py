@@ -1,9 +1,4 @@
-"""Routes de gestion des tendances : dashboard et ajout manuel.
-
-Endpoints :
-    GET  /           → dashboard (lecture seule pour viewer, formulaire pour admin)
-    POST /trends/add → créer une tendance → index ES → redirect /  [admin only]
-"""
+"""Routes de gestion des tendances : dashboard et ajout manuel."""
 
 from __future__ import annotations
 
@@ -12,14 +7,13 @@ from typing import List
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from config.settings import Settings
 from sources.base import Trend
 from web.auth import admin_required, get_current_user, login_required
+from web.templates_config import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
 logger = logging.getLogger(__name__)
 
 ALL_PLATFORMS = [
@@ -30,7 +24,6 @@ ALL_FORMATS = ["reel", "carousel", "thread", "story", "short", "blog", "product"
 
 
 def _get_store():
-    """Retourne un TrendStore connecté ou None si ES est indisponible."""
     try:
         from storage.elasticsearch import TrendStore
         s = Settings()
@@ -43,7 +36,6 @@ def _get_store():
 
 @router.get("/")
 async def dashboard(request: Request):
-    """Dashboard principal. Accessible à tous les utilisateurs authentifiés."""
     redirect = login_required(request)
     if redirect:
         return redirect
@@ -84,10 +76,6 @@ async def add_trend(
     notes: str = Form(default=""),
     score: int = Form(default=0),
 ):
-    """Crée une tendance depuis le formulaire et l'indexe dans ES.
-
-    Réservé aux utilisateurs avec le rôle ``admin``.
-    """
     redirect = admin_required(request)
     if redirect:
         return redirect
@@ -128,7 +116,7 @@ async def add_trend(
     else:
         request.session["flash"] = {
             "type": "warning",
-            "message": "⚠️ Elasticsearch non disponible. Tendance non persistée.",
+            "message": "⚠️ Elasticsearch non disponible.",
         }
 
     return RedirectResponse(url="/", status_code=303)
