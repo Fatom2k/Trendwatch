@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/fatom2k/trendwatch/output/schemas/report.json",
+  "title": "TrendWatch Report",
+  "description": "A full watch-cycle report produced by TrendWatch.",
+  "type": "object",
+  "required": ["generated_at", "count", "trends"],
+  "properties": {
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when this report was generated."
+    },
+    "count": {
+      "type": "integer",
+      "description": "Total number of trends in this report."
+    },
+    "trends": {
+      "type": "array",
+      "items": { "$ref": "trend.json" },
+      "description": "Ordered list of trends (highest score first)."
+    }
+  }
+}

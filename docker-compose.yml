@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  trendwatch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trendwatch_agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persist generated reports on the host
+      - ./output/reports:/app/output/reports
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SCHEDULE_CADENCE=${SCHEDULE_CADENCE:-daily}
+      - SCHEDULE_TIME=${SCHEDULE_TIME:-08:00}
+      - TIMEZONE=${TIMEZONE:-UTC}
+    command: ["python", "-m", "agent.scheduler"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,86 @@
+# TrendWatch platform configuration
+# Configure active platforms, target countries, languages and collection frequency.
+
+global:
+  timezone: UTC
+  min_score_threshold: 30
+  schedule:
+    cadence: daily          # hourly | daily | weekly
+    time: "08:00"           # HH:MM (used for daily/weekly)
+    interval_hours: 1       # used when cadence = hourly
+
+platforms:
+  google_trends:
+    enabled: true
+    geo: US                 # ISO country code or empty for worldwide
+    language: en-US
+    tz_offset: 0
+    keywords:
+      - aesthetic
+      - cottagecore
+      - darkacademia
+      - y2k
+      - minimalism
+      - quiet luxury
+      - gorpcore
+      - coastal grandmother
+    frequency: daily
+    min_score: 25
+
+  exploding_topics:
+    enabled: true
+    limit: 50
+    category: ""            # leave empty for all categories
+    frequency: daily
+    min_score: 30
+
+  tiktok:
+    enabled: false          # requires TIKTOK_API_KEY
+    country_code: US
+    trend_period: 7         # days: 7 | 30 | 120
+    categories:
+      - beauty
+      - fashion
+      - lifestyle
+      - food
+    frequency: hourly
+    min_score: 40
+
+  instagram:
+    enabled: false          # requires INSTAGRAM_ACCESS_TOKEN
+    seed_hashtags:
+      - aesthetic
+      - vintage
+      - cottagecore
+      - darkacademia
+      - y2k
+    use_sistrix: false      # set true if SISTRIX_API_KEY is set
+    frequency: daily
+    min_score: 35
+
+  twitter:
+    enabled: false          # requires TWITTER_BEARER_TOKEN
+    woeid: 1                # 1 = worldwide; 23424977 = USA
+    language: en
+    seed_keywords:
+      - aesthetic
+      - trending
+      - viral
+    frequency: hourly
+    min_score: 30
+
+pipelines:
+  digital:
+    enabled: true
+    formats:
+      - reel
+      - carousel
+      - thread
+      - story
+    webhook_url: ""         # optional POST endpoint
+
+  physical:
+    enabled: false
+    pod_platform: printful  # printful | printify
+    score_threshold: 70     # minimum score to create a physical brief
+    webhook_url: ""         # optional POST endpoint

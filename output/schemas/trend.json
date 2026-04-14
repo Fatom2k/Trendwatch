@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/fatom2k/trendwatch/output/schemas/trend.json",
+  "title": "Trend",
+  "description": "A single trend detected and scored by TrendWatch.",
+  "type": "object",
+  "required": ["id", "platform", "topic", "score", "detected_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this trend instance."
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["tiktok", "instagram", "twitter", "google_trends", "exploding_topics", "youtube", "pinterest"],
+      "description": "Source platform slug."
+    },
+    "topic": {
+      "type": "string",
+      "description": "Human-readable trend label."
+    },
+    "hashtags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Associated hashtags including leading #."
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Composite trend score (0-100)."
+    },
+    "demand": {
+      "type": "object",
+      "properties": {
+        "volume": { "type": "integer", "description": "Estimated view / search volume." },
+        "growth_rate": { "type": "number", "description": "Relative growth rate (0.0 to 1.0+)." }
+      }
+    },
+    "saturation": {
+      "type": "object",
+      "properties": {
+        "creator_count": { "type": "integer", "description": "Number of active creators on this trend." },
+        "avg_post_age_days": { "type": "number", "description": "Average age of posts in days." }
+      }
+    },
+    "velocity": {
+      "type": "object",
+      "properties": {
+        "daily_growth": { "type": "number", "description": "Average daily growth rate." },
+        "peak_acceleration": { "type": "number", "description": "Peak acceleration coefficient." }
+      }
+    },
+    "detected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when this trend was detected."
+    },
+    "suggested_formats": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Recommended content formats (reel, carousel, thread, etc.)."
+    },
+    "pipeline_target": {
+      "type": "string",
+      "enum": ["digital", "physical"],
+      "description": "Downstream pipeline target."
+    },
+    "cluster_id": {
+      "type": ["string", "null"],
+      "description": "Thematic cluster identifier assigned by the clusterer."
+    },
+    "summary": {
+      "type": ["string", "null"],
+      "description": "AI-generated actionable insight."
+    }
+  }
+}
