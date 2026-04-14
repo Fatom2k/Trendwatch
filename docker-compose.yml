@@ -2,13 +2,16 @@ version: "3.9"
 
 services:
 
+  # ---------------------------------------------------------------------------
+  # Elasticsearch — stockage des tendances (single-node, mode test)
+  # ---------------------------------------------------------------------------
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
     container_name: trendwatch_es
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false      # simplified for test/dev environment
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m    # memory cap for 4 GB VPS
+      - xpack.security.enabled=false      # simplifié pour environnement test/dev
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m    # plafond mémoire pour VPS 4 GB
     ulimits:
       memlock:
         soft: -1
@@ -16,7 +19,7 @@ services:
     volumes:
       - esdata:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"             # exposé uniquement en local
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
       interval: 30s
@@ -28,6 +31,9 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ---------------------------------------------------------------------------
+  # TrendWatch agent — scheduler de veille automatique
+  # ---------------------------------------------------------------------------
   trendwatch:
     build:
       context: .
@@ -40,7 +46,6 @@ services:
     env_file:
       - .env
     volumes:
-      # Persist generated reports on the host
       - ./output/reports:/app/output/reports
     environment:
       - PYTHONUNBUFFERED=1
@@ -55,6 +60,62 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ---------------------------------------------------------------------------
+  # Interface web — FastAPI + Auth0 Google OAuth
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trendwatch_web
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+    command: ["uvicorn", "web.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Caddy — reverse proxy HTTPS avec Let's Encrypt automatique
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: trendwatch_caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"       # requis par Let's Encrypt (challenge HTTP-01)
+      - "443:443"     # HTTPS
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    environment:
+      - DOMAIN=${DOMAIN}
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
 volumes:
   esdata:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  caddy_logs:
     driver: local

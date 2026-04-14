@@ -1,0 +1,23 @@
+# TrendWatch — Caddy reverse proxy
+# Caddy obtient et renouvelle automatiquement le certificat Let's Encrypt.
+# Remplacer {$DOMAIN} par votre domaine dans docker-compose ou dans .env
+
+{$DOMAIN} {
+    # Reverse proxy vers le service web FastAPI
+    reverse_proxy web:8000
+
+    # Logs structurés
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+
+    # Sécurité HTTP headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+}
