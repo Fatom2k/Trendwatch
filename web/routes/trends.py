@@ -1,14 +1,14 @@
-"""Trend management routes: dashboard listing and manual trend creation.
+"""Routes de gestion des tendances : dashboard et ajout manuel.
 
-Endpoints:
-    GET  /           → dashboard with recent trends and the add-trend form
-    POST /trends/add → create a Trend from form data → index in ES → redirect /
+Endpoints :
+    GET  /           → dashboard (lecture seule pour viewer, formulaire pour admin)
+    POST /trends/add → créer une tendance → index ES → redirect /  [admin only]
 """
 
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from config.settings import Settings
 from sources.base import Trend
-from web.auth import get_current_user, login_required
+from web.auth import admin_required, get_current_user, login_required
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -30,45 +30,45 @@ ALL_FORMATS = ["reel", "carousel", "thread", "story", "short", "blog", "product"
 
 
 def _get_store():
-    """Return a connected TrendStore or None if ES is unavailable."""
+    """Retourne un TrendStore connecté ou None si ES est indisponible."""
     try:
         from storage.elasticsearch import TrendStore
         s = Settings()
         store = TrendStore(host=s.elasticsearch_host, index_name=s.elasticsearch_index)
         return store if store.ping() else None
     except Exception as exc:  # noqa: BLE001
-        logger.warning("ES unavailable: %s", exc)
+        logger.warning("ES indisponible : %s", exc)
         return None
 
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    """Render the dashboard with the manual entry form and recent trends.
-
-    Redirects to ``/login`` if the user is not authenticated.
-    """
+    """Dashboard principal. Accessible à tous les utilisateurs authentifiés."""
     redirect = login_required(request)
     if redirect:
         return redirect
 
     user = get_current_user(request)
+    is_admin = user.get("role") == "admin"
+
     recent: list = []
     store = _get_store()
     if store:
         try:
             recent = store.search(size=20)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Could not fetch recent trends: %s", exc)
+            logger.warning("Erreur fetch tendances : %s", exc)
 
     return templates.TemplateResponse(
         "dashboard.html",
         {
-            "request": request,
-            "user": user,
-            "recent": recent,
+            "request":   request,
+            "user":      user,
+            "is_admin":  is_admin,
+            "recent":    recent,
             "platforms": ALL_PLATFORMS,
-            "formats": ALL_FORMATS,
-            "flash": request.session.pop("flash", None),
+            "formats":   ALL_FORMATS,
+            "flash":     request.session.pop("flash", None),
         },
     )
 
@@ -84,33 +84,20 @@ async def add_trend(
     notes: str = Form(default=""),
     score: int = Form(default=0),
 ):
-    """Create a :class:`~sources.base.Trend` from form input and index it.
+    """Crée une tendance depuis le formulaire et l’indexe dans ES.
 
-    Args:
-        request:           HTTP request (session access).
-        topic:             Free-text trend label.
-        sources:           Selected platform slugs.
-        hashtags_raw:      Comma-separated hashtag string.
-        suggested_formats: Checked content format slugs.
-        pipeline_target:   ``"digital"`` or ``"physical"``.
-        notes:             Free-text note stored as ``summary``.
-        score:             Optional manual score (0–100).
-
-    Returns:
-        Redirect to ``/`` with a flash message.
+    Réservé aux utilisateurs avec le rôle ``admin``.
     """
-    redirect = login_required(request)
+    redirect = admin_required(request)
     if redirect:
         return redirect
 
-    # Parse hashtags
     hashtags = [
         h.strip() if h.strip().startswith("#") else f"#{h.strip()}"
         for h in hashtags_raw.split(",")
         if h.strip()
     ]
 
-    # Use first selected source as platform, or "manual" as fallback
     platform = sources[0] if sources else "manual"
 
     trend = Trend(
@@ -128,11 +115,20 @@ async def add_trend(
     if store:
         try:
             store.index_trend(trend)
-            request.session["flash"] = {"type": "success", "message": f"✅ Tendance \u00ab {topic} \u00bb ajoutée."}
+            request.session["flash"] = {
+                "type": "success",
+                "message": f"\u2705 Tendance \u00ab\u00a0{topic}\u00a0\u00bb ajout\u00e9e.",
+            }
         except Exception as exc:
-            logger.error("Failed to index trend: %s", exc)
-            request.session["flash"] = {"type": "error", "message": f"❌ Erreur ES : {exc}"}
+            logger.error("Erreur indexation : %s", exc)
+            request.session["flash"] = {
+                "type": "error",
+                "message": f"\u274c Erreur ES\u00a0: {exc}",
+            }
     else:
-        request.session["flash"] = {"type": "warning", "message": "⚠️ Elasticsearch non disponible. Tendance non persistée."}
+        request.session["flash"] = {
+            "type": "warning",
+            "message": "\u26a0\ufe0f Elasticsearch non disponible. Tendance non persist\u00e9e.",
+        }
 
     return RedirectResponse(url="/", status_code=303)

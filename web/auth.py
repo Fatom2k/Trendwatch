@@ -1,15 +1,18 @@
-"""Auth0 / Google OAuth helpers for the TrendWatch web interface.
+"""Auth0 / Google OAuth helpers avec gestion des rôles et whitelist email.
 
-Uses ``authlib`` to implement the Authorization Code flow against Auth0.
-The authenticated user is stored in a signed session cookie managed by
-Starlette's :class:`~starlette.middleware.sessions.SessionMiddleware`.
+Rôles disponibles :
+- ``admin``  — peut voir le dashboard ET ajouter des tendances.
+- ``viewer`` — peut uniquement consulter le dashboard (lecture seule).
 
-Required environment variables::
+Contrôle d'accès via variables d'environnement ::
 
-    AUTH0_DOMAIN          your-tenant.auth0.com
-    AUTH0_CLIENT_ID       ...
-    AUTH0_CLIENT_SECRET   ...
-    AUTH0_CALLBACK_URL    https://yourdomain.com/auth/callback
+    ADMIN_EMAILS   = fatom@example.com,autre@example.com
+    ALLOWED_EMAILS = viewer1@example.com,viewer2@example.com
+
+Logique de résolution du rôle :
+- Email dans ADMIN_EMAILS                        → role = "admin"
+- Email dans ALLOWED_EMAILS (ou liste vide)       → role = "viewer"
+- Email absent des deux listes (si l'une est définie) → non autorisé (403)
 """
 
 from __future__ import annotations
@@ -37,6 +40,44 @@ oauth.register(
     ),
 )
 
+# ---------------------------------------------------------------------------
+# Email whitelist & rôles (chargés une fois au démarrage)
+# ---------------------------------------------------------------------------
+
+def _load_email_set(env_key: str) -> set[str]:
+    """Parse une liste d’emails depuis une variable d’environnement."""
+    raw = os.environ.get(env_key, "")
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
+ADMIN_EMAILS: set[str] = _load_email_set("ADMIN_EMAILS")
+ALLOWED_EMAILS: set[str] = _load_email_set("ALLOWED_EMAILS")
+
+
+def resolve_role(email: str) -> Optional[str]:
+    """Déterminer le rôle d’un utilisateur à partir de son email.
+
+    Args:
+        email: Adresse email normalisée (minuscules).
+
+    Returns:
+        ``"admin"``, ``"viewer"``, ou ``None`` si non autorisé.
+    """
+    email = email.lower().strip()
+
+    if email in ADMIN_EMAILS:
+        return "admin"
+
+    # Si ALLOWED_EMAILS est vide ET que l'email n'est pas admin
+    # → viewer ouvert (comportement par défaut si aucune liste configurée)
+    if not ALLOWED_EMAILS:
+        return "viewer"
+
+    if email in ALLOWED_EMAILS:
+        return "viewer"
+
+    return None  # non autorisé
+
 
 # ---------------------------------------------------------------------------
 # Session helpers
@@ -46,54 +87,56 @@ SESSION_KEY = "user"
 
 
 def get_current_user(request: Request) -> Optional[dict]:
-    """Return the logged-in user dict from the session, or ``None``.
-
-    Args:
-        request: Current HTTP request.
-
-    Returns:
-        Dict with at least ``name``, ``email``, ``picture`` keys,
-        or ``None`` if the user is not authenticated.
-    """
+    """Retourne le dict utilisateur depuis la session, ou ``None``."""
     return request.session.get(SESSION_KEY)
 
 
-def set_current_user(request: Request, user: dict) -> None:
-    """Persist *user* in the signed session cookie.
+def set_current_user(request: Request, user: dict, role: str) -> None:
+    """Persiste l’utilisateur et son rôle dans le cookie de session signé.
 
     Args:
-        request: Current HTTP request.
-        user:    User info dict returned by Auth0 userinfo endpoint.
+        request: Requête HTTP courante.
+        user:    Dict userinfo retourné par Auth0.
+        role:    Rôle résolu (``"admin"`` ou ``"viewer"``).
     """
     request.session[SESSION_KEY] = {
-        "sub": user.get("sub", ""),
-        "name": user.get("name", ""),
-        "email": user.get("email", ""),
+        "sub":     user.get("sub", ""),
+        "name":    user.get("name", ""),
+        "email":   user.get("email", ""),
         "picture": user.get("picture", ""),
+        "role":    role,
     }
 
 
 def clear_session(request: Request) -> None:
-    """Remove user data from the session cookie."""
+    """Supprime les données utilisateur du cookie de session."""
     request.session.pop(SESSION_KEY, None)
 
 
-def login_required(request: Request) -> RedirectResponse | None:
-    """Return a redirect to ``/login`` if the user is not authenticated.
+# ---------------------------------------------------------------------------
+# Guards (utilisés dans les routes)
+# ---------------------------------------------------------------------------
 
-    Intended for use at the top of route handlers::
-
-        redirect = login_required(request)
-        if redirect:
-            return redirect
-
-    Args:
-        request: Current HTTP request.
+def login_required(request: Request) -> Optional[RedirectResponse]:
+    """Redirige vers ``/login`` si l’utilisateur n’est pas connecté.
 
     Returns:
-        :class:`~fastapi.responses.RedirectResponse` to ``/login``, or
-        ``None`` if the user is authenticated.
+        :class:`RedirectResponse` vers ``/login``, ou ``None`` si connecté.
     """
     if not get_current_user(request):
         return RedirectResponse(url="/login", status_code=302)
+    return None
+
+
+def admin_required(request: Request) -> Optional[RedirectResponse]:
+    """Redirige vers ``/unauthorized`` si l’utilisateur n’est pas admin.
+
+    Returns:
+        :class:`RedirectResponse` vers ``/unauthorized``, ou ``None`` si admin.
+    """
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if user.get("role") != "admin":
+        return RedirectResponse(url="/unauthorized", status_code=302)
     return None
