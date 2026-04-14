@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
@@ -60,11 +61,14 @@ async def logout(request: Request):
     clear_session(request)
     domain = os.environ.get("AUTH0_DOMAIN", "")
     client_id = os.environ.get("AUTH0_CLIENT_ID", "")
-    return_to = str(request.base_url)
-    return RedirectResponse(
-        url=f"https://{domain}/v2/logout?client_id={client_id}&returnTo={return_to}",
-        status_code=302,
-    )
+    # Use explicit logout URL from env, or construct from request
+    return_to = os.environ.get("AUTH0_LOGOUT_URL", str(request.base_url).rstrip("/"))
+
+    # Build logout URL with properly encoded parameters
+    logout_params = urlencode({"client_id": client_id, "returnTo": return_to})
+    logout_url = f"https://{domain}/v2/logout?{logout_params}"
+
+    return RedirectResponse(url=logout_url, status_code=302)
 
 
 @router.get("/unauthorized")

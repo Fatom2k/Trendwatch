@@ -1,24 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Accès refusé &mdash; TrendWatch{% endblock %}
+{% block title %}Unauthorized — TrendWatch{% endblock %}
 
 {% block content %}
-<div class="flex flex-col items-center justify-center min-h-[60vh]">
-  <div class="bg-white rounded-2xl shadow-lg p-10 w-full max-w-sm text-center">
-    <div class="text-5xl mb-4">&#128683;</div>
-    <h1 class="text-2xl font-bold text-gray-800 mb-2">Accès refusé</h1>
-    <p class="text-gray-500 text-sm mb-2">
+<div class="flex items-center justify-center min-h-[calc(100vh-200px)]">
+  <div class="max-w-md w-full text-center">
+
+    <!-- Icon -->
+    <div class="text-6xl mb-6">🔐</div>
+
+    <!-- Message -->
+    <h1 class="text-4xl font-bold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent mb-3">
+      Access Denied
+    </h1>
+
+    <p class="text-slate-400 text-lg mb-8">
       {% if user %}
-      L’adresse <strong>{{ user.email }}</strong> n’est pas autorisée à accéder à TrendWatch.
+        Your account <span class="text-red-400 font-semibold">{{ user.email }}</span> is not authorized to access TrendWatch.
       {% else %}
-      Vous n’êtes pas autorisé à accéder à cette application.
+        You are not authorized to access this application.
       {% endif %}
     </p>
-    <p class="text-xs text-gray-400 mb-6">Contactez l’administrateur pour demander un accès.</p>
-    <a href="/logout"
-       class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-sm
-              font-semibold rounded-xl px-5 py-2.5 transition">
-      Se déconnecter
-    </a>
+
+    <!-- Details -->
+    <div class="bg-slate-900/40 backdrop-blur-md border border-slate-700/50 rounded-xl p-6 mb-8">
+      <p class="text-sm text-slate-300">
+        Contact an administrator to request access.
+      </p>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-3">
+      <a href="/logout"
+         class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100
+                 font-medium py-2.5 px-4 rounded-lg transition duration-200
+                 border border-slate-700 hover:border-slate-600">
+        Sign Out
+      </a>
+      <a href="/"
+         class="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500
+                 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200
+                 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 border border-cyan-400/30">
+        Go Back
+      </a>
+    </div>
+
   </div>
 </div>
 {% endblock %}

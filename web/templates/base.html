@@ -1,58 +1,154 @@
 <!DOCTYPE html>
-<html lang="fr" class="h-full bg-gray-50">
+<html lang="fr" class="h-full dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}TrendWatch{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/app.css" />
-</head>
-<body class="h-full font-sans text-gray-800">
+  <style>
+    :root {
+      --color-bg-primary: #0f172a;
+      --color-bg-secondary: #1e293b;
+      --color-bg-tertiary: #334155;
+      --color-accent: #06b6d4;
+      --color-accent-glow: rgba(6, 182, 212, 0.5);
+      --color-text-primary: #f1f5f9;
+      --color-text-secondary: #cbd5e1;
+      --color-border: rgba(148, 163, 184, 0.2);
+    }
 
-  <!-- Navbar -->
-  <nav class="bg-indigo-700 shadow-md">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-2 text-white font-bold text-xl tracking-tight">
-        <span class="text-2xl">&#128269;</span> TrendWatch
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: linear-gradient(135deg, var(--color-bg-primary) 0%, #1a1f2e 100%);
+      background-attachment: fixed;
+      color: var(--color-text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Grain texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="noise"><feTurbulence baseFrequency="0.9" numOctaves="4" result="noise" /></filter><rect width="100" height="100" fill="rgba(255,255,255,0.02)" filter="url(%23noise)" /></svg>');
+      pointer-events: none;
+      z-index: 1;
+      mix-blend-mode: multiply;
+    }
+
+    main, nav, footer {
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 10px var(--color-accent-glow), 0 0 20px var(--color-accent-glow); }
+      50% { text-shadow: 0 0 20px var(--color-accent-glow), 0 0 40px var(--color-accent-glow); }
+    }
+
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  </style>
+</head>
+<body class="h-full">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/40 border-b border-slate-700/50">
+    <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="text-3xl">&#128269;</div>
+        <h1 class="text-2xl font-bold tracking-tighter bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent">
+          TrendWatch
+        </h1>
       </a>
+
       {% if user %}
-      <div class="flex items-center gap-3">
-        <img src="{{ user.picture }}" alt="avatar"
-             class="w-8 h-8 rounded-full ring-2 ring-white" />
-        <span class="text-white text-sm hidden sm:inline">{{ user.name }}</span>
-        <!-- Badge rôle -->
-        {% if user.role == "admin" %}
-        <span class="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">Admin</span>
-        {% else %}
-        <span class="bg-indigo-400 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Viewer</span>
-        {% endif %}
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
+          <img src="{{ user.picture }}" alt="avatar"
+               class="w-9 h-9 rounded-full ring-1 ring-cyan-500/50" />
+          <div class="hidden sm:block">
+            <p class="text-sm font-medium text-slate-100">{{ user.name }}</p>
+            {% if user.role == "admin" %}
+            <span class="text-xs text-cyan-400 font-semibold">● Admin</span>
+            {% else %}
+            <span class="text-xs text-slate-400 font-semibold">● Viewer</span>
+            {% endif %}
+          </div>
+        </div>
         <a href="/logout"
-           class="text-indigo-200 hover:text-white text-sm transition">Déconnexion</a>
+           class="text-sm text-slate-300 hover:text-cyan-400 transition px-3 py-1.5 border border-slate-700 rounded-lg hover:border-cyan-500/50 hover:bg-cyan-500/5">
+          Logout
+        </a>
       </div>
       {% else %}
       <a href="/login"
-         class="text-indigo-200 hover:text-white text-sm transition">Connexion</a>
+         class="text-sm text-slate-300 hover:text-cyan-400 transition px-3 py-1.5 border border-slate-700 rounded-lg hover:border-cyan-500/50 hover:bg-cyan-500/5">
+        Sign In
+      </a>
       {% endif %}
-    </div>
-  </nav>
+    </nav>
+  </header>
 
-  <!-- Flash message -->
+  <!-- Flash messages -->
   {% if flash %}
-  <div class="max-w-5xl mx-auto px-4 pt-4">
-    <div class="flash-{{ flash.type }} rounded-lg px-4 py-3 text-sm">
+  <div class="fixed top-20 right-4 z-50 max-w-sm animation-fadeInUp">
+    <div class="rounded-xl p-4 backdrop-blur-md border
+                {% if flash.type == 'success' %}
+                  bg-emerald-500/10 border-emerald-500/30 text-emerald-300
+                {% elif flash.type == 'error' %}
+                  bg-red-500/10 border-red-500/30 text-red-300
+                {% else %}
+                  bg-amber-500/10 border-amber-500/30 text-amber-300
+                {% endif %}
+                text-sm font-medium">
       {{ flash.message }}
     </div>
   </div>
   {% endif %}
 
   <!-- Main content -->
-  <main class="max-w-5xl mx-auto px-4 py-8">
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-[calc(100vh-200px)]">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="text-center text-xs text-gray-400 py-6">
-    TrendWatch &mdash; app.trendwatch2k10.com
+  <footer class="mt-20 pt-12 border-t border-slate-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 text-center text-xs text-slate-500">
+      <p>TrendWatch — <span class="text-cyan-500">automated trend intelligence</span></p>
+      <p class="mt-2">App built on <span class="text-cyan-400 font-semibold">Claude AI</span> &amp; <span class="text-cyan-400 font-semibold">Elasticsearch</span></p>
+    </div>
   </footer>
 
 </body>
