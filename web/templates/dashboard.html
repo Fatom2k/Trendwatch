@@ -5,8 +5,9 @@
 <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
 
   <!-- ================================================================
-       FORM — left column (2/5)
+       FORM — colonne gauche (2/5) — ADMIN UNIQUEMENT
   ================================================================= -->
+  {% if is_admin %}
   <section class="lg:col-span-2">
     <div class="bg-white rounded-2xl shadow p-6">
       <h2 class="text-lg font-bold text-indigo-700 mb-5">&#43; Ajouter une tendance</h2>
@@ -42,21 +43,19 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Hashtags</label>
           <div id="tag-container"
-               class="flex flex-wrap gap-1 border border-gray-300 rounded-lg p-2 min-h-[2.5rem]"
+               class="flex flex-wrap gap-1 border border-gray-300 rounded-lg p-2 min-h-[2.5rem] cursor-text"
                onclick="document.getElementById('tag-input').focus()">
-            <!-- Chips injected by JS -->
           </div>
           <input id="tag-input" type="text"
-                 placeholder="Tape un tag, appuie sur Entre ou virgule"
+                 placeholder="Tape un tag puis Entre ou virgule"
                  class="mt-1 w-full border-0 border-b border-dashed border-gray-300
                         text-sm px-1 py-1 focus:outline-none focus:border-indigo-400" />
-          <!-- Hidden field sent with the form -->
           <input type="hidden" name="hashtags_raw" id="hashtags_raw" />
         </div>
 
         <!-- Formats -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Formats sugg&#233;r&#233;s</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Formats suggérés</label>
           <div class="flex flex-wrap gap-2">
             {% for f in formats %}
             <label class="flex items-center gap-1 text-sm cursor-pointer
@@ -112,12 +111,18 @@
       </form>
     </div>
   </section>
+  {% endif %}
 
   <!-- ================================================================
-       RECENT TRENDS — right column (3/5)
+       LISTE DES TENDANCES — colonne droite
   ================================================================= -->
-  <section class="lg:col-span-3">
-    <h2 class="text-lg font-bold text-gray-700 mb-4">Tendances r&#233;centes</h2>
+  <section class="{{ 'lg:col-span-3' if is_admin else 'lg:col-span-5' }}">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-gray-700">Tendances récentes</h2>
+      {% if not is_admin %}
+      <span class="text-xs text-gray-400 italic">Mode lecture seule</span>
+      {% endif %}
+    </div>
 
     {% if recent %}
     <div class="space-y-3">
@@ -128,7 +133,6 @@
             <span class="font-semibold text-gray-800 text-base">{{ t.topic }}</span>
             <span class="ml-2 text-xs text-gray-400">{{ t.platform }}</span>
           </div>
-          <!-- Score badge -->
           <span class="shrink-0 inline-flex items-center justify-center
                        w-10 h-10 rounded-full text-sm font-bold
                        {% if t.score >= 70 %}bg-green-100 text-green-700
@@ -147,7 +151,9 @@
         {% endif %}
 
         {% if t.summary %}
-        <p class="text-xs text-gray-500 mt-2 italic">{{ t.summary[:120] }}{% if t.summary|length > 120 %}&hellip;{% endif %}</p>
+        <p class="text-xs text-gray-500 mt-2 italic">
+          {{ t.summary[:120] }}{% if t.summary|length > 120 %}&hellip;{% endif %}
+        </p>
         {% endif %}
 
         <div class="flex flex-wrap gap-2 mt-2 text-xs text-gray-400">
@@ -167,15 +173,18 @@
     {% else %}
     <div class="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center text-gray-400">
       <div class="text-4xl mb-3">&#128202;</div>
-      <p class="text-sm">Aucune tendance enregistr&#233;e pour l&#8217;instant.</p>
+      <p class="text-sm">Aucune tendance enregistrée pour l’instant.</p>
+      {% if is_admin %}
       <p class="text-xs mt-1">Utilisez le formulaire pour en ajouter une manuellement.</p>
+      {% endif %}
     </div>
     {% endif %}
   </section>
 
 </div>
 
-<!-- Tag input script -->
+<!-- Tag input script (admin only) -->
+{% if is_admin %}
 <script>
   const input = document.getElementById('tag-input');
   const container = document.getElementById('tag-container');
@@ -221,4 +230,5 @@
     if (input.value.trim()) { addTag(input.value); input.value = ''; }
   });
 </script>
+{% endif %}
 {% endblock %}

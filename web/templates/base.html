@@ -21,8 +21,14 @@
         <img src="{{ user.picture }}" alt="avatar"
              class="w-8 h-8 rounded-full ring-2 ring-white" />
         <span class="text-white text-sm hidden sm:inline">{{ user.name }}</span>
+        <!-- Badge rôle -->
+        {% if user.role == "admin" %}
+        <span class="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">Admin</span>
+        {% else %}
+        <span class="bg-indigo-400 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Viewer</span>
+        {% endif %}
         <a href="/logout"
-           class="text-indigo-200 hover:text-white text-sm transition">Se d&#233;connecter</a>
+           class="text-indigo-200 hover:text-white text-sm transition">Déconnexion</a>
       </div>
       {% else %}
       <a href="/login"
@@ -46,7 +52,7 @@
   </main>
 
   <footer class="text-center text-xs text-gray-400 py-6">
-    TrendWatch &mdash; {{ now.year if now else "2025" }}
+    TrendWatch &mdash; app.trendwatch2k10.com
   </footer>
 
 </body>
