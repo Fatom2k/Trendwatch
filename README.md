@@ -1,114 +1,226 @@
 # TrendWatch 🔭
 
-> Agent de veille automatisée des tendances de contenu sur les plateformes sociales.
+> Agent de veille des tendances sociales — collecte automatisée, scoring IA, interface web et pipelines de contenu.
 
-## Vision
+## Vue d'ensemble
 
-TrendWatch est un agent intelligent qui surveille en continu les tendances émergentes sur Instagram, TikTok, X (Twitter), YouTube, Pinterest et d'autres plateformes. Il s'intègre dans un pipeline de création de contenu automatique — qu'il soit **dématérialisé** (posts, reels, threads) ou **matérialisé** (produits physiques via print-on-demand, shops, merchandising).
-
-## Pipeline global
+TrendWatch surveille en continu les tendances émergentes sur les plateformes sociales et les moteurs de recherche. Il s'intègre dans un pipeline de création de contenu **dématérialisé** (posts, reels, threads) ou **matérialisé** (print-on-demand, merchandising).
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌──────────────┐    ┌───────────────────┐
-│   VEILLE    │───▶│   ANALYSE    │───▶│   SCORING   │───▶│    OUTPUT    │───▶│     CONTENU       │
-│             │    │              │    │             │    │              │    │                   │
-│ TikTok      │    │ Clustering   │    │ Demande     │    │ Rapport MD   │    │ Digital : posts,  │
-│ Instagram   │    │ thématique   │    │ Saturation  │    │ JSON export  │    │ reels, threads    │
-│ X/Twitter   │    │ Résumé IA    │    │ Vélocité    │    │ Alertes      │    │                   │
-│ Google      │    │ (Claude API) │    │ Score /100  │    │              │    │ Physique : POD,   │
-│ Trends      │    │              │    │             │    │              │    │ shops, merch      │
-└─────────────┘    └──────────────┘    └─────────────┘    └──────────────┘    └───────────────────┘
+Sources (TikTok, Google Trends, YouTube, Instagram, Twitter…)
+    ↓
+TrendWatchAgent  →  Scorer · Clusterer · Summarizer (Claude API)
+    ↓
+TrendStore (Elasticsearch)
+    ↓
+Importers (CSV, API)  ←→  Visualizers (dashboard web)
+    ↓
+Pipelines → Contenu digital / physique
 ```
 
-## Structure du projet
+---
 
-```
-trendwatch/
-├── agent/              # Orchestrateur principal
-│   ├── core.py         # TrendWatchAgent
-│   ├── scheduler.py    # Planification des cycles
-│   └── output.py       # Formatage et export
-├── sources/            # Connecteurs par plateforme
-│   ├── base.py         # Classe abstraite BaseSource
-│   ├── tiktok.py
-│   ├── instagram.py
-│   ├── twitter.py
-│   ├── google_trends.py
-│   └── exploding_topics.py
-├── analysis/           # Traitement et scoring
-│   ├── scorer.py       # Score multicritère /100
-│   ├── clustering.py   # Regroupement thématique
-│   └── summarizer.py   # Résumé IA (Claude API)
-├── pipelines/          # Sorties vers création de contenu
-│   ├── content_digital.py
-│   └── content_physical.py
-├── output/             # Rapports générés
-│   └── schemas/        # Schémas JSON
-├── config/             # Configuration globale
-└── tests/
-```
-
-## Installation
+## Démarrage rapide (Docker)
 
 ```bash
-# Cloner le repo
 git clone https://github.com/fatom2k/trendwatch.git
 cd trendwatch
 
-# Créer un environnement virtuel
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# .venv\Scripts\activate   # Windows
-
-# Installer les dépendances
-pip install -r requirements.txt
-
 # Configurer les variables d'environnement
 cp .env.example .env
-# Éditer .env avec vos clés API
+# Éditer .env (Auth0, clés API, domaine…)
+
+# Démarrer tous les services
+docker compose up -d
+
+# Suivre les logs
+docker compose logs -f web
 ```
 
-## Lancement
+L'interface web est disponible sur `https://DOMAIN` (HTTPS automatique via Caddy + Let's Encrypt).
 
-```bash
-# Lancer un cycle de veille unique
-python -m agent.core
+> ⚠️ Ce projet tourne **exclusivement sur Docker Compose**. Ne pas lancer Python localement.
 
-# Lancer en mode scheduler (continu)
-python -m agent.scheduler
+---
 
-# Via Docker
-docker-compose up -d
+## Architecture
+
+```
+trendwatch/
+├── agent/                  # Orchestrateur (scheduler + cycles de veille)
+│   ├── core.py             # TrendWatchAgent.run()
+│   └── scheduler.py        # APScheduler (horaire/quotidien/hebdo)
+│
+├── sources/                # Connecteurs API live (héritent BaseSource)
+│   ├── base.py             # BaseSource (ABC) + Trend (dataclass)
+│   ├── google_trends_v2.py # Google Trends — modes discovery / tracking
+│   ├── tiktok.py
+│   ├── instagram.py
+│   ├── twitter.py
+│   └── exploding_topics.py
+│
+├── importers/              # Imports déclenchés depuis l'UI
+│   ├── base.py             # BaseImporter + BaseApiFetcher + contextes
+│   ├── google_trends_csv.py# Import CSV Google Trends
+│   └── youtube_viral.py    # Fetch YouTube Data API v3 (chart=mostPopular)
+│
+├── visualizers/            # Affichage par source dans le dashboard
+│   ├── base.py             # BaseVisualizer + VizContext
+│   ├── google_trends.py
+│   └── youtube_viral.py
+│
+├── analysis/               # Traitement des tendances
+│   ├── scorer.py           # Score multicritère 0–100
+│   ├── clustering.py       # Regroupement thématique (TF-IDF + agglo)
+│   └── summarizer.py       # Résumé IA via Claude API
+│
+├── storage/
+│   └── elasticsearch.py    # TrendStore — index_trend / index_document / search
+│
+├── pipelines/
+│   ├── content_digital.py  # Posts, reels, threads
+│   └── content_physical.py # POD, merch
+│
+├── web/                    # Interface FastAPI
+│   ├── app.py              # Factory + middleware session
+│   ├── auth.py             # Auth0 OAuth + rôles admin/viewer
+│   ├── routes/             # auth · trends · importer · admin · settings
+│   └── templates/          # Jinja2 (base, dashboard, import, viz/…)
+│
+├── config/
+│   └── settings.py         # Tous les paramètres depuis .env
+│
+├── scripts/
+│   ├── migrate_env.sh      # Fusionne .env.example → .env sans écraser
+│   ├── auto-deploy.sh      # Pull + rebuild si changement git détecté
+│   ├── trendwatch-autodeploy.service
+│   └── trendwatch-autodeploy.timer
+│
+├── caddy/
+│   └── Caddyfile           # Reverse proxy + HTTPS Let's Encrypt
+│
+├── docs/                   # Documentation technique
+└── tests/
 ```
 
-## Variables d'environnement requises
+---
+
+## Services Docker
+
+| Service | Rôle | Port interne |
+|---|---|---|
+| `elasticsearch` | Stockage des tendances | 9200 |
+| `trendwatch` | Agent scheduler (cycles de veille) | — |
+| `web` | Interface FastAPI + Uvicorn | 8000 |
+| `caddy` | Reverse proxy HTTPS | 80/443 |
+
+---
+
+## Variables d'environnement principales
 
 | Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | Clé API Claude (Anthropic) |
-| `TIKTOK_API_KEY` | Clé API TikTok Creative Center |
-| `TWITTER_BEARER_TOKEN` | Bearer token X/Twitter API v2 |
-| `INSTAGRAM_ACCESS_TOKEN` | Token d'accès Instagram Graph API |
-| `SISTRIX_API_KEY` | Clé API SISTRIX (hashtags Instagram) |
-| `EXPLODING_TOPICS_API_KEY` | Clé API Exploding Topics |
+| `DOMAIN` | Nom de domaine (ex. `app.trendwatch2k10.com`) |
+| `AUTH0_DOMAIN` | Domaine Auth0 |
+| `AUTH0_CLIENT_ID` | Client ID Auth0 |
+| `AUTH0_CLIENT_SECRET` | Client Secret Auth0 |
+| `AUTH0_CALLBACK_URL` | URL de callback OAuth |
+| `ADMIN_EMAILS` | Emails admin (séparés par virgule) |
+| `ALLOWED_EMAILS` | Emails viewer (vide = ouvert à tout compte Google) |
+| `SESSION_SECRET` | Secret cookie (32+ caractères aléatoires) |
+| `ANTHROPIC_API_KEY` | Claude API (résumés IA) |
+| `YOUTUBE_API_KEY` | YouTube Data API v3 |
+| `ELASTICSEARCH_HOST` | URL Elasticsearch (défaut: `http://elasticsearch:9200`) |
+| `DEPLOY_TAG` | `dev` ou `prod` — pilote l'auto-deploy |
 
-## Exemples de résultats
+Voir `.env.example` pour la liste complète.
 
-```json
-{
-  "id": "tt_cottagecore_2025_04",
-  "platform": "tiktok",
-  "topic": "cottagecore aesthetic",
-  "hashtags": ["#cottagecore", "#darkacademia", "#fairycore"],
-  "score": 82,
-  "demand": { "volume": 4200000, "growth_rate": 0.34 },
-  "saturation": { "creator_count": 12000, "avg_post_age_days": 18 },
-  "velocity": { "daily_growth": 0.08, "peak_acceleration": 1.4 },
-  "detected_at": "2025-04-14T08:00:00Z",
-  "suggested_formats": ["reel", "carousel", "thread"],
-  "pipeline_target": "digital"
-}
+---
+
+## Gestion des accès
+
+- **admin** — accès complet (dashboard, import CSV, fetch API, admin panel)
+- **viewer** — lecture seule (dashboard, visualisations)
+
+Configurer via `ADMIN_EMAILS` et `ALLOWED_EMAILS` dans `.env`.  
+Voir `docs/auth0_setup.md` pour la configuration Auth0.
+
+---
+
+## Sources de données
+
+| Source | Type | Mode |
+|---|---|---|
+| Google Trends | `web_searches` | CSV upload ou API (discovery/tracking) |
+| YouTube Viral | `social_video` | Fetch API v3 (chart=mostPopular) |
+| TikTok | `social_video` | API Creative Center |
+| Instagram | `social_hashtags` | Graph API + SISTRIX |
+| Twitter/X | `news` | API v2 |
+| Exploding Topics | `web_searches` | API REST |
+
+---
+
+## Ajouter un nouveau module
+
+### Import CSV (fichier uploadé)
+1. `importers/ma_source.py` → hérite `BaseImporter`
+2. `visualizers/ma_source.py` → hérite `BaseVisualizer`
+3. `web/templates/viz/ma_source.html`
+4. Enregistrer dans `importers/__init__.py` et `visualizers/__init__.py`
+
+### Fetch API (bouton dans l'UI)
+1. `importers/ma_source.py` → hérite `BaseFetcher`
+2. `visualizers/ma_source.py` → hérite `BaseVisualizer`
+3. `web/templates/viz/ma_source.html`
+4. Enregistrer dans `importers/__init__.py` (`_FETCHER_REGISTRY`) et `visualizers/__init__.py`
+
+Voir `docs/adding_modules.md` pour le guide détaillé.
+
+---
+
+## Déploiement automatique
+
+Le timer systemd vérifie les mises à jour git toutes les 5 minutes et redémarre les services si nécessaire.
+
+```bash
+# Installation (une seule fois sur le VPS)
+sudo cp scripts/trendwatch-autodeploy.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now trendwatch-autodeploy.timer
+
+# Logs
+journalctl -u trendwatch-autodeploy -f
 ```
+
+`DEPLOY_TAG=dev` → suit la branche `dev`  
+`DEPLOY_TAG=prod` → suit la branche `main`
+
+---
+
+## Migration .env
+
+```bash
+# Ajoute les nouvelles variables sans écraser les valeurs existantes
+bash scripts/migrate_env.sh
+
+# Prévisualisation sans modification
+bash scripts/migrate_env.sh --dry-run
+```
+
+---
+
+## Commandes utiles
+
+```bash
+docker compose ps                      # État des services
+docker compose logs -f web             # Logs interface web
+docker compose logs -f trendwatch      # Logs agent
+docker compose exec web pytest         # Tests
+docker compose up -d --build           # Rebuild après modif code
+bash scripts/migrate_env.sh            # Mettre à jour .env
+```
+
+---
 
 ## Licence
 

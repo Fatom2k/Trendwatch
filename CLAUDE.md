@@ -210,32 +210,53 @@ donnees/
 
 ```json
 {
-  "_data_category": "terms",        // Data category (terms, trending, news, etc.)
-  "_data_source": "google_trends",  // Source platform
-  "_geo": "FR",                      // Geographic location
-  "_imported_at": "2026-04-15T...", // UTC timestamp of import
-  
-  "data": { /* raw CSV data */ },   // Original/raw data from import
-  "title": "query string",           // Human-readable title/topic
-  "trend": 150,                      // Numeric trend value (growth %, rank, etc.)
-  
-  // Optional metadata
-  "_csv_source": "filename.csv",
-  "_search_type": "web",
-  "_time_range": "hours",
-  "_csv_row_index": 1
+  "_data_source":   "google_trends",  // Source platform key
+  "_data_category": "terms",          // Data category (terms, trending, etc.)
+  "_geo":           "FR",             // Geographic location ("WW" for worldwide)
+  "_imported_at":   "2026-04-15T...", // UTC timestamp of import
+
+  "title": "query string",            // Human-readable title/topic
+  "trend": 150,                       // Numeric trend value (growth %, rank, views…)
+  "data": { /* source-specific payload */ }
 }
 ```
 
-**How `title` and `trend` are extracted by category:**
-- **terms** — `title`: Query column, `trend`: Increase percent (as integer)
-- **trending** — *(to be specified)*
-- **news** — *(to be specified)*
-- Other categories — *(to be specified)*
+**Optional metadata fields (set by the specific importer/fetcher):**
+
+```json
+{
+  "_csv_source":    "filename.csv",   // BaseImporter: source filename
+  "_csv_row_index": 1,                // BaseImporter: row number
+  "_search_type":   "web",            // Google Trends: web/image/news/youtube
+  "_time_range":    "hours",          // Google Trends: time range
+  "_snapshot_at":   "2026-04-15T...", // BaseFetcher: snapshot timestamp (time-series)
+  "_fetch_source":  "youtube_api_v3"  // BaseFetcher: which API was called
+}
+```
+
+**How `title` and `trend` are extracted:**
+- **google_trends / terms** — `title`: query keyword, `trend`: increase % (int)
+- **youtube_viral / trending** — `title`: video title, `trend`: view count (int)
+- **Other sources** — define in `build_document()` of the importer/fetcher
+
+**Snapshot-based time series (YouTube, future fetchers):**
+- `_snapshot_at` is set to the fetch timestamp (distinct from `_imported_at`)
+- `search_documents()` returns all snapshots; the visualizer deduplicates dates
+- The UI snapshot selector filters cards client-side by `data-snapshot` attribute
 
 ## Development Patterns
 
-### Adding a New Source
+TrendWatch has **three ingestion patterns** — choose the right one for your data source:
+
+| Pattern | Base class | Where | When to use |
+|---------|-----------|-------|-------------|
+| `BaseSource` | `sources/base.py` | `sources/` | Background scheduler polling |
+| `BaseImporter` | `importers/base.py` | `importers/` | User uploads a file (CSV, etc.) |
+| `BaseFetcher` | `importers/base.py` | `importers/` | UI-triggered live API call |
+
+See `docs/adding_modules.md` for full step-by-step guides.
+
+### Adding a New Source (Scheduler)
 
 Each source collector captures one **content type**. Supported types:
 
@@ -275,6 +296,29 @@ Each source collector captures one **content type**. Supported types:
 3. Register in `config/settings.py` (add API key settings).
 4. Register in `agent/core.py._build_sources()` (add to active platform check).
 5. Add tests in `tests/test_sources.py` using mocks.
+
+### Adding a File Importer (CSV Upload)
+
+1. Create `importers/your_source.py` inheriting `BaseImporter`.
+2. Implement `parse_rows(file_path)` and `build_document(row, idx, context)`.
+3. Register in `importers/__init__.py` → `_FILE_REGISTRY`.
+4. Create `visualizers/your_source.py` inheriting `BaseVisualizer`.
+5. Register in `visualizers/__init__.py` → `_REGISTRY`.
+6. Create `web/templates/viz/your_source.html`.
+
+### Adding a Live API Fetcher (UI Button)
+
+1. Create `importers/your_source.py` inheriting `BaseFetcher`.
+2. Implement `fetch(context)` and `build_document(raw_item, idx, context)`.
+   - Track quota in `self._units_consumed`.
+   - Raise `QuotaExhaustedError` when quota is exhausted → route returns HTTP 429.
+3. Register in `importers/__init__.py` → `_FETCHER_REGISTRY`.
+4. Create `visualizers/your_source.py` and register in `visualizers/__init__.py`.
+5. Create `web/templates/viz/your_source.html`.
+6. Add API key to `config/settings.py` and `.env.example`.
+7. Run `bash scripts/migrate_env.sh` on the production server.
+
+The route `POST /import/fetch` handles all fetchers generically — no route changes needed.
 
 ### Modifying the Score
 
