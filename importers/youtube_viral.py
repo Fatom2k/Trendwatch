@@ -28,8 +28,8 @@ class YouTubeApiFetcher(BaseFetcher):
     """Fetch trending YouTube videos via the YouTube Data API v3.
 
     Two geographic scopes are supported:
-    - ``geo="FR"`` → ``regionCode=FR``
-    - ``geo=""``   → worldwide (no regionCode param)
+    - ``geo="FR"`` → ``regionCode=FR`` (stored as _geo="FR")
+    - ``geo=""``   → worldwide (stored as _geo="")
 
     Quota tracking is in-memory per instance (sufficient for manual usage).
     """
@@ -156,18 +156,24 @@ class YouTubeApiFetcher(BaseFetcher):
         )
 
         view_count = _int(statistics.get("viewCount"))
+        video_id = raw_item.get("id", "")
+        geo = context.geo or "WW"
+
+        # Generate deterministic document ID to enable deduplication on re-fetch
+        doc_id = f"youtube_viral#{geo}#{video_id}"
 
         return {
             "_data_source":   self.SOURCE_KEY,
             "_data_category": context.data_category,
-            "_geo":           context.geo or "WW",
+            "_geo":           context.geo or "",
             "_imported_at":   context.fetched_at,
             "_snapshot_at":   context.fetched_at,
             "_fetch_source":  "youtube_api_v3",
+            "_doc_id":        doc_id,
             "title":          snippet.get("title", ""),
             "trend":          view_count,
             "data": {
-                "video_id":             raw_item.get("id", ""),
+                "video_id":             video_id,
                 "channel_title":        snippet.get("channelTitle", ""),
                 "channel_id":           snippet.get("channelId", ""),
                 "published_at":         snippet.get("publishedAt", ""),

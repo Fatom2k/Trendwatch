@@ -227,17 +227,21 @@ class TrendStore:
         hits = resp["hits"]["hits"]
         return [hit["_source"] for hit in hits]
 
-    def index_document(self, document: Dict[str, Any]) -> None:
+    def index_document(self, document: Dict[str, Any], doc_id: Optional[str] = None) -> None:
         """Index a single arbitrary document (CSV imports and raw data).
 
         Unlike :meth:`index_trend`, this does not require a Trend object.
-        The document is stored as-is with an ES-generated ``_id``.
+        If ``doc_id`` is provided, it is used as the ``_id`` so re-indexing
+        the same document (same doc_id) updates rather than duplicates.
+        If ``doc_id`` is None, Elasticsearch generates a random ``_id``.
 
         Args:
             document: Any dict following the unified document structure
                       (must include ``_data_source``, ``_data_category``, etc.).
+            doc_id:   Optional deterministic document ID. If provided, ensures
+                      deduplication on re-import of the same content.
         """
-        self._es.index(index=self.index_name, document=document)
+        self._es.index(index=self.index_name, id=doc_id, document=document)
 
     def search_documents(
         self,

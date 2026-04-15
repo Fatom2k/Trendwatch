@@ -34,7 +34,7 @@ async def api_fetch(
     request: Request,
     source: str = Form("youtube_viral"),
     data_category: str = Form("trending"),
-    geo: str = Form("FR"),
+    geo: str = Form(""),
     max_results: int = Form(50),
 ):
     """Trigger a live API fetch and index results into Elasticsearch (admin only)."""
@@ -101,7 +101,8 @@ async def api_fetch(
     for idx, item in enumerate(raw_items, start=1):
         try:
             doc = fetcher.build_document(item, idx, context)
-            store.index_document(doc)
+            doc_id = doc.pop("_doc_id", None)  # Extract and remove from document
+            store.index_document(doc, doc_id=doc_id)
             imported_count += 1
         except Exception as exc:
             logger.warning("Failed to index item %d from '%s': %s", idx, source, exc)
@@ -273,7 +274,8 @@ async def upload_csv(
         for idx, row in enumerate(raw_rows, start=1):
             try:
                 doc = importer.build_document(row, idx, context)
-                store.index_document(doc)
+                doc_id = doc.pop("_doc_id", None)  # Extract and remove from document
+                store.index_document(doc, doc_id=doc_id)
                 imported_count += 1
             except Exception as exc:
                 logger.warning(
