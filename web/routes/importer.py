@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from difflib import SequenceMatcher
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import JSONResponse
@@ -20,6 +22,73 @@ router = APIRouter(prefix="/import", tags=["import"])
 
 # Templates
 templates = Jinja2Templates(directory="web/templates")
+
+
+def _normalize_column_name(col: str) -> str:
+    """Normalize column name for comparison."""
+    return col.lower().strip().replace(" ", "").replace("_", "").replace("-", "")
+
+
+def _similarity(a: str, b: str) -> float:
+    """Calculate similarity between two strings (0.0 to 1.0)."""
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def _find_column(
+    csv_columns: list,
+    search_terms: list,
+    threshold: float = 0.6,
+) -> Optional[str]:
+    """Find a column in CSV that matches any of the search terms."""
+    normalized_searches = [_normalize_column_name(term) for term in search_terms]
+
+    for csv_col in csv_columns:
+        normalized_csv = _normalize_column_name(csv_col)
+
+        # Check for exact match
+        if normalized_csv in normalized_searches:
+            return csv_col
+
+        # Check for fuzzy match with similarity
+        for search_term, norm_search in zip(search_terms, normalized_searches):
+            similarity = _similarity(normalized_csv, norm_search)
+            if similarity >= threshold:
+                return csv_col
+
+    return None
+
+
+def _process_google_trends_terms(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Process a Google Trends CSV row for 'terms' category.
+
+    Extracts:
+    - 'Query' field → 'title'
+    - 'Increase percent' field → 'trend'
+    - All CSV columns → nested 'data' object
+    """
+    csv_columns = list(item.keys())
+
+    # Find 'query' column
+    query_col = _find_column(csv_columns, ["Query", "Title", "Keyword", "Search", "Term"])
+    query_val = item.get(query_col, "") if query_col else ""
+
+    # Find 'increase percent' column
+    increase_col = _find_column(csv_columns, ["Increase percent", "Growth", "Change", "Increase"])
+    trend_val = 0
+    if increase_col:
+        try:
+            # Remove % sign and convert to int
+            increase_str = item.get(increase_col, "0").replace("%", "").strip()
+            trend_val = int(float(increase_str)) if increase_str else 0
+        except (ValueError, AttributeError):
+            trend_val = 0
+
+    # Return processed document
+    return {
+        "title": query_val,
+        "trend": trend_val,
+        "data": item,  # Nested: all CSV data
+    }
 
 
 @router.get("")
@@ -157,9 +226,8 @@ async def upload_csv(
         imported_count = 0
         for idx, item in enumerate(raw_items, start=1):
             try:
-                # Add metadata to each document
+                # Build base document
                 doc = {
-                    **item,  # Original CSV columns
                     "_csv_source": csv_file.filename,
                     "_data_source": source,
                     "_data_category": data_category,
@@ -169,6 +237,15 @@ async def upload_csv(
                     "_csv_row_index": idx,
                     "_imported_at": __import__("datetime").datetime.utcnow().isoformat(),
                 }
+
+                # Special processing for Google Trends 'terms' category
+                if source == "google_trends" and data_category == "terms":
+                    processed = _process_google_trends_terms(item)
+                    doc.update(processed)
+                else:
+                    # Default: keep all CSV columns at root level
+                    doc.update(item)
+
                 store._es.index(index=store.index_name, document=doc)
                 imported_count += 1
             except Exception as exc:

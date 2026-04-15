@@ -34,6 +34,35 @@ def _get_store():
         return None
 
 
+def _group_by_source_category(trends: List[dict]) -> dict:
+    """Group trends by source + category and extract top 10 for each group."""
+    grouped: dict = {}
+
+    for trend in trends:
+        source = trend.get("_data_source", "unknown")
+        category = trend.get("_data_category", "unknown")
+        key = f"{source}_{category}"
+
+        if key not in grouped:
+            grouped[key] = {
+                "source": source,
+                "category": category,
+                "trends": [],
+            }
+
+        grouped[key]["trends"].append(trend)
+
+    # Sort each group by trend value and keep top 10
+    for key in grouped:
+        grouped[key]["trends"].sort(
+            key=lambda t: t.get("trend", 0) if isinstance(t.get("trend"), (int, float)) else 0,
+            reverse=True
+        )
+        grouped[key]["trends"] = grouped[key]["trends"][:10]
+
+    return grouped
+
+
 @router.get("/")
 async def dashboard(request: Request):
     redirect = login_required(request)
@@ -43,11 +72,13 @@ async def dashboard(request: Request):
     user = get_current_user(request)
     is_admin = user.get("role") == "admin"
 
-    recent: list = []
+    grouped_data: dict = {}
     store = _get_store()
     if store:
         try:
-            recent = store.search(size=20)
+            # Fetch all trends (or reasonable limit like 1000)
+            all_trends = store.search(size=1000)
+            grouped_data = _group_by_source_category(all_trends)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Erreur fetch tendances : %s", exc)
 
@@ -55,11 +86,11 @@ async def dashboard(request: Request):
         request,
         "dashboard.html",
         {
-            "request":   request,
-            "user":      user,
-            "is_admin":  is_admin,
-            "recent":    recent,
-            "flash":     request.session.pop("flash", None),
+            "request":      request,
+            "user":         user,
+            "is_admin":     is_admin,
+            "grouped_data": grouped_data,
+            "flash":        request.session.pop("flash", None),
         },
     )
 
@@ -154,53 +185,6 @@ async def trends_explorer(request: Request):
             "trends": trends,
             "total_trends": len(trends),
             "es_status": es_status,
-        },
-    )
-
-
-@router.get("/statistics")
-async def statistics(request: Request):
-    """Display trend statistics and metrics."""
-    redirect = login_required(request)
-    if redirect:
-        return redirect
-
-    user = get_current_user(request)
-    stats = {
-        "total_trends": 0,
-        "by_platform": {},
-        "avg_score": 0,
-        "top_trends": [],
-    }
-
-    store = _get_store()
-    if store:
-        try:
-            trends = store.search(size=500)
-            stats["total_trends"] = len(trends)
-
-            # Count by platform
-            for t in trends:
-                platform = t.get("platform", "unknown")
-                stats["by_platform"][platform] = stats["by_platform"].get(platform, 0) + 1
-
-            # Average score
-            if trends:
-                avg = sum(t.get("score", 0) for t in trends) / len(trends)
-                stats["avg_score"] = round(avg, 1)
-
-            # Top 5 trends
-            stats["top_trends"] = sorted(trends, key=lambda t: t.get("score", 0), reverse=True)[:5]
-        except Exception as exc:
-            logger.warning("Error fetching statistics: %s", exc)
-
-    return templates.TemplateResponse(
-        request,
-        "statistics.html",
-        {
-            "request": request,
-            "user": user,
-            "stats": stats,
         },
     )
 

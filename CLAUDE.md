@@ -204,6 +204,35 @@ donnees/
   - Covers Netflix, Hulu, Prime Video, and more
   - Implementation pattern: `sources/trakt.py` (to be created as example)
 
+### Unified Document Structure (Elasticsearch)
+
+**All imported documents in Elasticsearch follow a standardized structure with mandatory fields:**
+
+```json
+{
+  "_data_category": "terms",        // Data category (terms, trending, news, etc.)
+  "_data_source": "google_trends",  // Source platform
+  "_geo": "FR",                      // Geographic location
+  "_imported_at": "2026-04-15T...", // UTC timestamp of import
+  
+  "data": { /* raw CSV data */ },   // Original/raw data from import
+  "title": "query string",           // Human-readable title/topic
+  "trend": 150,                      // Numeric trend value (growth %, rank, etc.)
+  
+  // Optional metadata
+  "_csv_source": "filename.csv",
+  "_search_type": "web",
+  "_time_range": "hours",
+  "_csv_row_index": 1
+}
+```
+
+**How `title` and `trend` are extracted by category:**
+- **terms** — `title`: Query column, `trend`: Increase percent (as integer)
+- **trending** — *(to be specified)*
+- **news** — *(to be specified)*
+- Other categories — *(to be specified)*
+
 ## Development Patterns
 
 ### Adding a New Source
