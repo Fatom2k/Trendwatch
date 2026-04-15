@@ -79,14 +79,10 @@ class Settings:
     )
 
     # ------------------------------------------------------------------
-    # Google Trends
+    # Google Trends (multiple backends: mock, rapidapi, direct)
     # ------------------------------------------------------------------
-    google_trends_geo: str = _env("GOOGLE_TRENDS_GEO", "US")
-    google_trends_language: str = _env("GOOGLE_TRENDS_LANGUAGE", "en-US")
-    google_trends_tz_offset: int = _env_int("GOOGLE_TRENDS_TZ_OFFSET", 0)
-    google_trends_keywords: List[str] = _env_list(
-        "GOOGLE_TRENDS_KEYWORDS", "aesthetic,cottagecore,darkacademia,y2k,minimalism"
-    )
+    google_trends_backend: str = _env("GOOGLE_TRENDS_BACKEND", "mock")  # mock (dev) | rapidapi (prod) | direct (blocked)
+    google_trends_rapidapi_key: str = _env("GOOGLE_TRENDS_RAPIDAPI_KEY")  # Required for rapidapi backend
 
     # ------------------------------------------------------------------
     # TikTok

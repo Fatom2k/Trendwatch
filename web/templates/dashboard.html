@@ -10,6 +10,11 @@
     <p class="text-slate-400">Real-time trend monitoring &amp; intelligence</p>
   </div>
   <div class="flex items-center gap-3">
+    <a href="/import/csv"
+       class="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500
+              text-white font-medium rounded-lg transition shadow-lg shadow-purple-500/20">
+      📥 Import CSV
+    </a>
     <a href="/statistics"
        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100
               font-medium rounded-lg transition border border-slate-700 hover:border-slate-600">
@@ -44,11 +49,12 @@
         <div class="relative bg-slate-900/40 backdrop-blur-md border border-slate-700/50 group-hover:border-cyan-500/30 rounded-xl p-5 transition duration-300">
           <div class="flex items-start justify-between gap-3 mb-3">
             <div class="flex-1">
-              <h4 class="font-bold text-slate-100 text-base">{{ t.topic }}</h4>
-              <p class="text-xs text-slate-500 mt-1">{{ t.platform }} • {{ t.detected_at[:10] if t.detected_at else "" }}</p>
+              <h4 class="font-bold text-slate-100 text-base">{{ t.topic|default(t.get('Title')|default(t.get('Keyword')|default('Unknown'))) }}</h4>
+              <p class="text-xs text-slate-500 mt-1">{{ t.platform|default('csv_import') }} • {{ (t.detected_at[:10] if t.detected_at else "")|default('') }}</p>
             </div>
 
-            <!-- Score badge -->
+            <!-- Score badge (optional for CSV imports) -->
+            {% if t.score is defined %}
             <div class="shrink-0 flex items-center justify-center
                         w-12 h-12 rounded-full text-base font-bold text-white
                         {% if t.score >= 70 %}
@@ -60,10 +66,11 @@
                         {% endif %}">
               {{ t.score }}
             </div>
+            {% endif %}
           </div>
 
-          <!-- Hashtags -->
-          {% if t.hashtags %}
+          <!-- Hashtags (Trend objects only) -->
+          {% if t.hashtags is defined %}
           <div class="flex flex-wrap gap-2 mb-3">
             {% for h in t.hashtags[:6] %}
             <span class="tag-chip text-xs px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 rounded-full">
@@ -73,27 +80,29 @@
           </div>
           {% endif %}
 
-          <!-- Summary -->
-          {% if t.summary %}
+          <!-- Summary (Trend objects only) -->
+          {% if t.summary is defined and t.summary %}
           <p class="text-sm text-slate-400 mb-3 leading-relaxed">
             "{{ t.summary[:140] }}{% if t.summary|length > 140 %}..."{% endif %}"
           </p>
           {% endif %}
 
           <!-- Metadata -->
+          {% if t.suggested_formats is defined or t.pipeline_target is defined %}
           <div class="flex flex-wrap gap-3 text-xs pt-3 border-t border-slate-700/30">
-            {% if t.suggested_formats %}
+            {% if t.suggested_formats is defined %}
             <span class="text-slate-400">
               📋 <span class="text-slate-300">{{ t.suggested_formats | join(", ") }}</span>
             </span>
             {% endif %}
-            {% if t.pipeline_target %}
+            {% if t.pipeline_target is defined %}
             <span class="{% if t.pipeline_target == "physical" %}text-amber-400{% else %}text-cyan-400{% endif %}">
               {{ "📦" if t.pipeline_target == "physical" else "💻" }}
               <span>{{ t.pipeline_target | title }}</span>
             </span>
             {% endif %}
           </div>
+          {% endif %}
         </div>
       </div>
       {% endfor %}

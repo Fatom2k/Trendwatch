@@ -33,6 +33,7 @@ class Trend:
         detected_at:      UTC timestamp of detection.
         suggested_formats: Content formats suitable for this trend.
         pipeline_target:  Downstream pipeline slug (``"digital"`` or ``"physical"``).
+        content_type:     Data category (e.g. ``"web_searches"``, ``"social_video"``, ``"streaming"``).
         cluster_id:       Thematic cluster assigned by the clusterer.
         summary:          AI-generated actionable insight.
         raw:              Original payload from the source API.
@@ -48,6 +49,7 @@ class Trend:
     detected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     suggested_formats: List[str] = field(default_factory=list)
     pipeline_target: str = "digital"
+    content_type: str = "web_searches"  # web_searches, social_video, social_hashtags, streaming, shopping, news
     cluster_id: Optional[str] = None
     summary: Optional[str] = None
     raw: Dict[str, Any] = field(default_factory=dict)
@@ -67,6 +69,7 @@ class Trend:
             "detected_at": self.detected_at,
             "suggested_formats": self.suggested_formats,
             "pipeline_target": self.pipeline_target,
+            "content_type": self.content_type,
             "cluster_id": self.cluster_id,
             "summary": self.summary,
         }

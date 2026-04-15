@@ -136,9 +136,9 @@ async def trends_explorer(request: Request):
     if store:
         try:
             es_status = "connected"
-            trends = store.search(size=500)
-            # Sort by score descending
-            trends.sort(key=lambda t: t.get("score", 0), reverse=True)
+            trends = store.search(size=1000)
+            # Sort by import date descending (newest first)
+            trends.sort(key=lambda t: t.get("_imported_at", ""), reverse=True)
         except Exception as exc:
             logger.warning("Error fetching trends: %s", exc)
             es_status = f"error: {exc}"
@@ -154,27 +154,6 @@ async def trends_explorer(request: Request):
             "trends": trends,
             "total_trends": len(trends),
             "es_status": es_status,
-        },
-    )
-
-
-@router.get("/import")
-async def import_page(request: Request):
-    """Dedicated page for manually importing trends."""
-    redirect = admin_required(request)
-    if redirect:
-        return redirect
-
-    user = get_current_user(request)
-
-    return templates.TemplateResponse(
-        request,
-        "import.html",
-        {
-            "request": request,
-            "user": user,
-            "platforms": ALL_PLATFORMS,
-            "formats": ALL_FORMATS,
         },
     )
 

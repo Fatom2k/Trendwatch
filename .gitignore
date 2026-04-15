@@ -55,3 +55,7 @@ claude_code_session.log
 
 # OS
 Thumbs.db
+
+# Data uploads (user-generated CSV imports)
+donnees/uploads/
+donnees/**/*.tmp

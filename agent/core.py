@@ -16,7 +16,7 @@ from analysis.summarizer import TrendSummarizer
 from agent.output import ReportWriter
 from config.settings import Settings
 from sources.base import Trend
-from sources.google_trends import GoogleTrendsSource
+from sources.google_trends_api import GoogleTrendsSource
 from sources.exploding_topics import ExplodingTopicsSource
 
 logger = logging.getLogger(__name__)
@@ -147,7 +147,18 @@ class TrendWatchAgent:
         active = self.settings.active_platforms
 
         if "google_trends" in active:
-            sources.append(GoogleTrendsSource(settings=self.settings))
+            # GoogleTrendsSource: fetch top 50 trending searches
+            # Backend options: "mock" (dev), "rapidapi" (prod), "direct" (blocked)
+            # Content types: web_searches, social_video, news, shopping
+            backend = getattr(self.settings, 'google_trends_backend', 'mock')
+            rapidapi_key = getattr(self.settings, 'google_trends_rapidapi_key', '')
+            sources.append(
+                GoogleTrendsSource(
+                    settings=self.settings,
+                    backend=backend,
+                    rapidapi_key=rapidapi_key,
+                )
+            )
         if "exploding_topics" in active:
             sources.append(
                 ExplodingTopicsSource(

@@ -4,10 +4,18 @@
 {% block content %}
 <!-- Header -->
 <div class="mb-8">
-  <h2 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-2">
-    Trends Explorer
-  </h2>
-  <p class="text-slate-400">Browse all {{ total_trends }} collected trends from active sources</p>
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-2">
+        📊 Trends Explorer
+      </h2>
+      <p class="text-slate-400">Browse all data in database</p>
+    </div>
+    <div class="text-right">
+      <p class="text-2xl font-bold text-cyan-400">{{ total_trends }}</p>
+      <p class="text-sm text-slate-500">Total Records</p>
+    </div>
+  </div>
 </div>
 
 <!-- Status Bar -->
@@ -18,89 +26,47 @@
       Elasticsearch: <span class="font-semibold {% if es_status == 'connected' %}text-emerald-400{% elif es_status == 'disconnected' %}text-red-400{% else %}text-amber-400{% endif %}">{{ es_status | upper }}</span>
     </span>
   </div>
-  <span class="text-sm text-slate-400">{{ total_trends }} trends available</span>
 </div>
 
-<!-- Trends Grid -->
+<!-- Data Table with Pagination -->
 {% if trends %}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {% for t in trends %}
-  <div class="group relative">
-    <!-- Hover glow -->
-    <div class="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/10 to-transparent rounded-xl opacity-0 group-hover:opacity-100 blur-lg transition duration-500"></div>
+<div class="relative overflow-x-auto rounded-xl border border-slate-700/50 bg-slate-900/40 backdrop-blur-md">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-slate-700/50 bg-slate-800/50">
+        <th class="px-6 py-4 text-left font-semibold text-slate-300">Imported Date</th>
+        <th class="px-6 py-4 text-left font-semibold text-slate-300">Source</th>
+        <th class="px-6 py-4 text-left font-semibold text-slate-300">Data Category</th>
+        <th class="px-6 py-4 text-left font-semibold text-slate-300">Search Type</th>
+        <th class="px-6 py-4 text-left font-semibold text-slate-300">Topic / Title</th>
+        <th class="px-6 py-4 text-left font-semibold text-slate-300">CSV File</th>
+        <th class="px-6 py-4 text-left font-semibold text-slate-300">Geography</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <!-- Rows will be inserted here by JavaScript -->
+    </tbody>
+  </table>
+</div>
 
-    <div class="relative bg-slate-900/40 backdrop-blur-md border border-slate-700/50 group-hover:border-cyan-500/30 rounded-xl p-5 transition duration-300 h-full flex flex-col">
-
-      <!-- Top: Topic + Platform -->
-      <div class="flex items-start justify-between gap-3 mb-3">
-        <div class="flex-1 min-w-0">
-          <h3 class="font-bold text-slate-100 text-base truncate">{{ t.topic }}</h3>
-          <p class="text-xs text-slate-500 mt-1">{{ t.platform }} • {{ t.detected_at[:10] if t.detected_at else "Unknown" }}</p>
-        </div>
-
-        <!-- Score Badge -->
-        <div class="shrink-0 flex items-center justify-center w-12 h-12 rounded-full text-base font-bold text-white
-                    {% if t.score >= 70 %}
-                      bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30
-                    {% elif t.score >= 40 %}
-                      bg-gradient-to-br from-amber-500 to-amber-600 shadow-lg shadow-amber-500/30
-                    {% else %}
-                      bg-gradient-to-br from-rose-500 to-rose-600 shadow-lg shadow-rose-500/30
-                    {% endif %}">
-          {{ t.score }}
-        </div>
-      </div>
-
-      <!-- Hashtags -->
-      {% if t.hashtags %}
-      <div class="flex flex-wrap gap-2 mb-3">
-        {% for h in t.hashtags[:4] %}
-        <span class="text-xs px-2 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 rounded-full truncate">
-          {{ h }}
-        </span>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      <!-- Summary -->
-      {% if t.summary %}
-      <p class="text-sm text-slate-400 mb-3 leading-relaxed line-clamp-2">
-        "{{ t.summary }}"
-      </p>
-      {% endif %}
-
-      <!-- Metrics -->
-      <div class="text-xs text-slate-500 space-y-1 mb-3 py-3 border-t border-slate-700/30">
-        {% if t.demand %}
-        <div class="flex justify-between">
-          <span>Demand Volume:</span>
-          <span class="text-cyan-300">{{ t.demand.volume | default(0) | int }}</span>
-        </div>
-        {% endif %}
-        {% if t.saturation %}
-        <div class="flex justify-between">
-          <span>Creator Count:</span>
-          <span class="text-slate-300">{{ t.saturation.creator_count | default(0) }}</span>
-        </div>
-        {% endif %}
-      </div>
-
-      <!-- Footer -->
-      <div class="flex items-center justify-between text-xs pt-3 border-t border-slate-700/30 mt-auto">
-        {% if t.suggested_formats %}
-        <span class="text-slate-400">
-          📋 <span class="text-slate-300">{{ t.suggested_formats | join(", ") }}</span>
-        </span>
-        {% endif %}
-        {% if t.pipeline_target %}
-        <span class="{% if t.pipeline_target == 'physical' %}text-amber-400{% else %}text-cyan-400{% endif %}">
-          {{ "📦 Physical" if t.pipeline_target == "physical" else "💻 Digital" }}
-        </span>
-        {% endif %}
-      </div>
-    </div>
+<!-- Pagination Controls -->
+<div class="mt-6 flex items-center justify-between">
+  <div class="text-sm text-slate-400">
+    Showing <span id="pageInfo"></span> of {{ total_trends }} records
   </div>
-  {% endfor %}
+  <div class="flex gap-2">
+    <button id="prevBtn" onclick="previousPage()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
+      ← Previous
+    </button>
+    <div class="flex items-center gap-2">
+      <span class="text-sm text-slate-400">Page</span>
+      <input id="pageInput" type="number" value="1" min="1" class="w-16 px-3 py-2 bg-slate-800 border border-slate-700 rounded text-slate-300 text-center" />
+      <span class="text-sm text-slate-400">of <span id="totalPages"></span></span>
+    </div>
+    <button id="nextBtn" onclick="nextPage()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
+      Next →
+    </button>
+  </div>
 </div>
 
 {% else %}
@@ -108,16 +74,203 @@
 <div class="relative group">
   <div class="absolute -inset-0.5 bg-gradient-to-r from-slate-700/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 blur-lg transition duration-500"></div>
   <div class="relative bg-slate-900/40 backdrop-blur-md border border-dashed border-slate-600/50 rounded-xl p-16 text-center">
-    <div class="text-5xl mb-4 opacity-50">🔍</div>
-    <p class="text-slate-400 font-medium">No trends collected yet</p>
+    <div class="text-5xl mb-4 opacity-50">📭</div>
+    <p class="text-slate-400 font-medium">No data in database yet</p>
     <p class="text-slate-500 text-sm mt-2">
-      Run the agent to start collecting trends from active sources
+      Import CSV files or run the agent to collect trends
     </p>
-    <p class="text-slate-600 text-xs mt-4">
-      Or add trends manually from the dashboard
-    </p>
+    <div class="mt-6 flex gap-3 justify-center">
+      <a href="/import" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition">
+        📥 Import CSV
+      </a>
+      <a href="/" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition">
+        📊 Back to Dashboard
+      </a>
+    </div>
   </div>
 </div>
 {% endif %}
+
+<!-- JSON Viewer Modal -->
+<div id="jsonModal" style="display: none;" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div class="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[80vh] flex flex-col">
+    <!-- Modal Header -->
+    <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+      <h3 class="text-lg font-bold text-slate-100">Record Details (JSON)</h3>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-200 text-2xl leading-none">×</button>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="flex-1 overflow-auto p-6">
+      <pre id="jsonContent" class="text-xs text-slate-300 bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 font-mono overflow-auto"></pre>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="px-6 py-4 border-t border-slate-700 flex gap-3">
+      <button onclick="copyToClipboard()" class="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition">
+        📋 Copy JSON
+      </button>
+      <button onclick="closeModal()" class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg font-medium transition">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // All trends data from server
+  const allTrends = {{ trends | tojson | safe }};
+  const itemsPerPage = 10;
+  let currentPage = 1;
+
+  // Initialize pagination
+  function initPagination() {
+    const totalPages = Math.ceil(allTrends.length / itemsPerPage);
+    document.getElementById('totalPages').textContent = totalPages;
+    renderPage();
+  }
+
+  // Render current page
+  function renderPage() {
+    const totalPages = Math.ceil(allTrends.length / itemsPerPage);
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageData = allTrends.slice(start, end);
+
+    // Update page info
+    const displayStart = start + 1;
+    const displayEnd = Math.min(end, allTrends.length);
+    document.getElementById('pageInfo').textContent = `${displayStart}-${displayEnd}`;
+
+    // Render table rows
+    const tableBody = document.getElementById('tableBody');
+    tableBody.innerHTML = '';
+
+    pageData.forEach(t => {
+      const row = document.createElement('tr');
+      row.className = 'border-b border-slate-700/30 hover:bg-slate-800/30 transition duration-200 cursor-pointer';
+      row.style.cursor = 'pointer';
+
+      // Import Date
+      const importedDate = t._imported_at ? t._imported_at.substring(0, 10) : '—';
+      const importedTime = t._imported_at ? t._imported_at.substring(11, 19) : '';
+
+      // Source badge
+      const sourceHTML = t._data_source ?
+        `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t._data_source === 'google_trends' ? 'bg-blue-500/20 text-blue-300' : 'bg-slate-700/50 text-slate-300'}">
+          ${t._data_source === 'google_trends' ? '📊' : ''} ${t._data_source.replace('_', ' ').charAt(0).toUpperCase() + t._data_source.replace('_', ' ').slice(1)}
+        </span>` : '<span class="text-slate-600">—</span>';
+
+      // Data Category badge
+      const categoryHTML = t._data_category ?
+        `<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium ${t._data_category === 'terms' ? 'bg-purple-500/20 text-purple-300' : 'bg-red-500/20 text-red-300'}">
+          ${t._data_category === 'terms' ? '🔍' : '🔥'} ${t._data_category.charAt(0).toUpperCase() + t._data_category.slice(1)}
+        </span>` : '<span class="text-slate-600">—</span>';
+
+      // Search Type
+      const searchTypeIcon = {'web': '🔍', 'videos': '🎬', 'news': '📰', 'shopping': '🛍️', 'images': '🖼️', 'trending': '🔥'}[t._search_type] || '';
+      const searchTypeHTML = t._search_type ? `<span class="text-slate-300 text-xs">${searchTypeIcon} ${t._search_type.charAt(0).toUpperCase() + t._search_type.slice(1)}</span>` : '<span class="text-slate-600">—</span>';
+
+      // Topic
+      const topic = t.topic || t.Title || t.Keyword || t.get?.('Title') || t.get?.('Keyword') || '—';
+
+      // CSV Source
+      const csvHTML = t._csv_source ? `<span class="text-slate-400 text-xs">${t._csv_source}</span>` : '<span class="text-slate-600">—</span>';
+
+      // Geography
+      const geoHTML = t._geo ? `<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-cyan-500/20 text-cyan-300">🌍 ${t._geo}</span>` : '<span class="text-slate-600">—</span>';
+
+      row.innerHTML = `
+        <td class="px-6 py-4 text-slate-400"><span class="text-xs">${importedDate}</span><div class="text-xs text-slate-500">${importedTime}</div></td>
+        <td class="px-6 py-4">${sourceHTML}</td>
+        <td class="px-6 py-4">${categoryHTML}</td>
+        <td class="px-6 py-4">${searchTypeHTML}</td>
+        <td class="px-6 py-4 max-w-xs"><span class="text-slate-200 font-medium truncate block" title="${topic}">${topic}</span></td>
+        <td class="px-6 py-4">${csvHTML}</td>
+        <td class="px-6 py-4">${geoHTML}</td>
+      `;
+
+      row.addEventListener('click', () => openModal(t));
+      tableBody.appendChild(row);
+    });
+
+    // Update button states
+    updatePaginationButtons();
+  }
+
+  function updatePaginationButtons() {
+    const totalPages = Math.ceil(allTrends.length / itemsPerPage);
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = currentPage === totalPages;
+    document.getElementById('pageInput').value = currentPage;
+  }
+
+  function previousPage() {
+    if (currentPage > 1) {
+      currentPage--;
+      renderPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  function nextPage() {
+    const totalPages = Math.ceil(allTrends.length / itemsPerPage);
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  // Listen to page input changes
+  document.getElementById('pageInput').addEventListener('change', (e) => {
+    const totalPages = Math.ceil(allTrends.length / itemsPerPage);
+    const page = parseInt(e.target.value) || 1;
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+      renderPage();
+    }
+  });
+
+  // Modal functions
+  let currentRecord = null;
+
+  function openModal(record) {
+    currentRecord = record;
+    const jsonContent = document.getElementById('jsonContent');
+    jsonContent.textContent = JSON.stringify(record, null, 2);
+    document.getElementById('jsonModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('jsonModal').style.display = 'none';
+  }
+
+  function copyToClipboard() {
+    const jsonContent = document.getElementById('jsonContent').textContent;
+    navigator.clipboard.writeText(jsonContent).then(() => {
+      alert('✅ JSON copied to clipboard');
+    }).catch(() => {
+      alert('❌ Failed to copy');
+    });
+  }
+
+  // Close modal when clicking outside
+  document.getElementById('jsonModal').addEventListener('click', (e) => {
+    if (e.target.id === 'jsonModal') {
+      closeModal();
+    }
+  });
+
+  // Close modal with Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+
+  // Initialize on page load
+  initPagination();
+</script>
 
 {% endblock %}

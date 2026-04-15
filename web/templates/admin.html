@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — TrendWatch{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+  <h2 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent mb-2">
+    🔐 Admin Panel
+  </h2>
+  <p class="text-slate-400">System configuration and data management</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+  <!-- System Status -->
+  <section class="lg:col-span-2">
+    <div class="relative group">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-slate-100 mb-6 flex items-center gap-2">
+          <span class="text-xl">📊</span> Elasticsearch Status
+        </h3>
+
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+            <div>
+              <p class="text-sm font-semibold text-slate-300">Host</p>
+              <p class="text-xs text-slate-500 mt-1">{{ elasticsearch_host }}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              {% if es_available %}
+                <div class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                <span class="text-sm text-emerald-400">Connected</span>
+              {% else %}
+                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span class="text-sm text-red-400">Offline</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+            <div>
+              <p class="text-sm font-semibold text-slate-300">Index</p>
+              <p class="text-xs text-slate-500 mt-1">{{ elasticsearch_index }}</p>
+            </div>
+            <span class="text-2xl font-bold text-cyan-400">{{ trend_count }}</span>
+          </div>
+
+          <div class="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+            <div>
+              <p class="text-sm font-semibold text-slate-300">Total Trends</p>
+              <p class="text-xs text-slate-500 mt-1">Documents indexed</p>
+            </div>
+            <p class="text-sm text-slate-400">📑</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Actions -->
+  <section>
+    <div class="relative group">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
+          <span class="text-xl">⚡</span> Quick Actions
+        </h3>
+
+        <div class="space-y-3 text-sm text-slate-400">
+          <p class="text-cyan-300 font-semibold">Available:</p>
+          <ul class="space-y-2">
+            <li class="flex gap-2">
+              <span>🗑️</span>
+              <span>Clear all Elasticsearch data</span>
+            </li>
+            <li class="flex gap-2">
+              <span>📥</span>
+              <span>Manage CSV imports</span>
+            </li>
+            <li class="flex gap-2">
+              <span>👥</span>
+              <span>User permissions</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data Management Section -->
+  <section class="lg:col-span-3">
+    <div class="relative group">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+      <div class="relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <h3 class="text-lg font-bold text-red-400 mb-6 flex items-center gap-2">
+          <span class="text-xl">⚠️</span> Data Management
+        </h3>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p class="text-sm text-red-300 flex gap-2">
+              <span class="flex-shrink-0">🚨</span>
+              <span>Clearing Elasticsearch will <strong>permanently delete</strong> all {{ trend_count }} indexed trends. This action cannot be undone.</span>
+            </p>
+          </div>
+
+          <div id="action-buttons" class="flex gap-3">
+            <button id="clear-es-btn"
+                    class="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500
+                           text-white font-semibold rounded-xl px-6 py-3 transition duration-200
+                           shadow-lg shadow-red-500/20 hover:shadow-red-500/40
+                           border border-red-400/30 hover:border-red-300/50
+                           transform hover:scale-105">
+              🗑️ Clear Elasticsearch
+            </button>
+          </div>
+
+          <!-- Confirmation Dialog -->
+          <div id="confirm-dialog" style="display: none;" class="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+            <p class="text-sm text-orange-300 mb-4 font-semibold">⚡ Confirm: Delete ALL {{ trend_count }} trends?</p>
+            <div class="flex gap-3">
+              <button id="confirm-btn"
+                      class="flex-1 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg px-4 py-2 transition">
+                ✓ Yes, Delete Everything
+              </button>
+              <button id="cancel-btn"
+                      class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold rounded-lg px-4 py-2 transition">
+                ✕ Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- Message -->
+          <div id="message" style="display: none;" class="p-4 rounded-lg border"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const clearBtn = document.getElementById('clear-es-btn');
+  const confirmDialog = document.getElementById('confirm-dialog');
+  const confirmBtn = document.getElementById('confirm-btn');
+  const cancelBtn = document.getElementById('cancel-btn');
+  const messageDiv = document.getElementById('message');
+
+  clearBtn.addEventListener('click', () => {
+    clearBtn.style.display = 'none';
+    confirmDialog.style.display = 'block';
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    clearBtn.style.display = 'block';
+    confirmDialog.style.display = 'none';
+    messageDiv.style.display = 'none';
+  });
+
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '⏳ Processing...';
+
+    try {
+      const response = await fetch('/admin/clear-elasticsearch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        messageDiv.className = 'p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-300';
+        messageDiv.innerHTML = `✅ ${data.message}`;
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        messageDiv.className = 'p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300';
+        messageDiv.innerHTML = `❌ ${data.error}`;
+      }
+      messageDiv.style.display = 'block';
+    } catch (error) {
+      messageDiv.className = 'p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300';
+      messageDiv.innerHTML = `❌ Error: ${error.message}`;
+      messageDiv.style.display = 'block';
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '✓ Yes, Delete Everything';
+    }
+  });
+</script>
+{% endblock %}

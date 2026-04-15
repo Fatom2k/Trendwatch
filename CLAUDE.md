@@ -94,6 +94,30 @@ Requirements pins `jinja2==3.1.3` because version 3.1.4 has a cache-key bug with
 - Set `ANTHROPIC_API_KEY` in `.env`.
 - All Claude calls are in `analysis/summarizer.py`.
 
+### Google Trends V2 (Discovery + Keyword Tracking)
+
+**⚠️ IMPORTANT: GoogleTrendsV2 has two distinct modes** (configured via `GOOGLE_TRENDS_MODE` in `.env`):
+
+1. **DISCOVERY mode** (default: `GOOGLE_TRENDS_MODE=discovery`)
+   - Auto-discovers emerging trends by comparing 37 seed topics
+   - Returns only trends with >30% growth (configurable in `sources/google_trends_v2.py`)
+   - No keyword pre-configuration needed
+   - Best for: Finding new trends organically
+
+2. **TRACKING mode** (`GOOGLE_TRENDS_MODE=tracking`)
+   - Monitors specific keywords from `GOOGLE_TRENDS_KEYWORDS` setting
+   - Returns all tracked keywords with their current growth rates
+   - Best for: Monitoring known trends and measuring momentum
+
+**Switch modes in `.env`:**
+```env
+GOOGLE_TRENDS_MODE=discovery   # Auto-discover new trends (default)
+# OR
+GOOGLE_TRENDS_MODE=tracking    # Track specific keywords
+```
+
+**Note:** Old `GoogleTrendsSource` (sources/google_trends.py) relied on pytrends `trending_searches()` endpoint which Google deprecated. Use `GoogleTrendsV2Source` instead.
+
 ### Elasticsearch Setup
 
 - Docker container in `docker-compose.yml` with security disabled (dev/test only).
@@ -137,14 +161,91 @@ See `.env.example` for all options and defaults.
 - `docker-compose.yml`: Four services (elasticsearch, trendwatch agent, web, caddy reverse proxy).
 - Caddy auto-provisions HTTPS via Let's Encrypt. Domain from `$DOMAIN` env var.
 
+### Data Sources & Content Types
+
+Each source collector captures a specific **content category**. This allows filtering and analysis by type:
+
+**Supported Content Types:**
+- `web_searches` — General web search queries (Google Trends, Exploding Topics)
+- `social_video` — Video trends from TikTok, Instagram Reels, YouTube Shorts
+- `social_hashtags` — Hashtag popularity (TikTok, Instagram)
+- `streaming` — Streaming platform trending content (Netflix via Trakt.tv, YouTube)
+- `shopping` — E-commerce and product trending (Google Shopping Trends)
+- `news` — News and current events trending (Google News Trends, Twitter)
+
+**Configured Sources (`.env` → `ACTIVE_PLATFORMS`):**
+- **google_trends** (web_searches) — Top 50 searches (mock mode for dev, RapidAPI for prod)
+- **tiktok** (social_video) — Trending hashtags via TikTok Creative Center API
+- **instagram** (social_hashtags) — Hashtag popularity via Graph API + SISTRIX
+- **twitter** (news) — Trending topics and hashtags
+- **exploding_topics** (web_searches) — Rapidly growing search queries
+- **trakt** (streaming, planned) — Netflix/streaming trending shows via Trakt.tv API
+
+**CSV Import:**
+- Upload CSV files via **`http://localhost:8000/import/csv`**
+- Supports Google Trends exports (Title, Value, Traffic, etc.)
+- Auto-detects column names (flexible parsing)
+- Saves to `donnees/uploads/` and stores directly in Elasticsearch
+
+**Directory Structure - Data Management:**
+```
+donnees/
+├── samples/          ← Example CSV files (for testing/reference)
+│   └── example_trends_FR.csv
+├── uploads/          ← User-uploaded CSV files (not committed)
+└── exports/          ← Generated reports and exports (optional)
+```
+
+**Netflix / Streaming Strategy:**
+- **Recommendation:** Use **Trakt.tv API** (free, reliable)
+  - Endpoint: https://api.trakt.tv/shows/trending
+  - Returns: Trending shows with watcher count, play count
+  - No auth required; rate limited at 1000 req/hour
+  - Covers Netflix, Hulu, Prime Video, and more
+  - Implementation pattern: `sources/trakt.py` (to be created as example)
+
 ## Development Patterns
 
 ### Adding a New Source
 
-1. Inherit from `BaseSource` in a new file, e.g. `sources/youtube.py`.
-2. Implement `fetch()`, `normalize()`, `to_trend()`.
-3. Register in `config/settings.py` and `agent/core.py._build_sources()`.
-4. Add tests in `tests/test_sources.py`.
+Each source collector captures one **content type**. Supported types:
+
+| Type | Description | Example Sources |
+|------|-------------|-----------------|
+| `web_searches` | General web search queries | Google Trends, Exploding Topics |
+| `social_video` | Video content trends | TikTok, Instagram Reels, YouTube Shorts |
+| `social_hashtags` | Hashtag popularity | TikTok, Instagram |
+| `streaming` | Streaming platform content | Netflix (via Trakt.tv), YouTube |
+| `shopping` | E-commerce & product trends | Google Shopping |
+| `news` | News & current events | Google News, Twitter |
+
+**Steps to add a new source:**
+
+1. Create `sources/your_platform.py` inheriting from `BaseSource`.
+2. Implement three methods:
+   ```python
+   def fetch(self) -> List[Dict[str, Any]]:
+       """Retrieve raw data from API/scraper."""
+
+   def normalize(self, raw_item: Dict[str, Any]) -> Dict[str, Any]:
+       """Convert to common dict with 'topic', 'hashtags', demand/saturation/velocity."""
+
+   def to_trend(self, normalized: Dict[str, Any]) -> Trend:
+       """Convert to Trend object, specifying content_type."""
+       return Trend(
+           platform="your_platform",
+           topic=normalized["topic"],
+           hashtags=normalized["hashtags"],
+           content_type="web_searches",  # ← KEY: specify type here
+           demand=normalized["demand"],
+           saturation=normalized["saturation"],
+           velocity=normalized["velocity"],
+           # ... other fields
+       )
+   ```
+3. Register in `config/settings.py` (add API key settings).
+4. Register in `agent/core.py._build_sources()` (add to active platform check).
+5. Add tests in `tests/test_sources.py` using mocks.
 
 ### Modifying the Score
 
@@ -169,6 +270,30 @@ templates.TemplateResponse(request, "template.html", {"request": request})
 templates.TemplateResponse("template.html", {"request": request})
 templates.TemplateResponse("template.html", context={"request": request})
 ```
+
+**⚠️ IMPORTANT: All web pages must pass user context to templates:**
+
+Every template response must include both `request` AND `user` in the context dict so that:
+- The navbar renders correctly (displays user info, role badge, admin/import links)
+- Auth guards can be enforced at the template level
+- User session info is consistently available across all pages
+
+```python
+from web.auth import get_current_user
+
+user = get_current_user(request)
+return templates.TemplateResponse(
+    request,
+    "template.html",
+    {
+        "request": request,
+        "user": user,  # ← Always include this
+        # ... other context
+    },
+)
+```
+
+All pages extend `base.html`, which expects `user` in the context for proper navbar rendering.
 
 ## Common Git Patterns
 

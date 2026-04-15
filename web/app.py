@@ -16,6 +16,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from web.routes.auth import router as auth_router
 from web.routes.trends import router as trends_router
+from web.routes.importer import router as import_router
+from web.routes.admin import router as admin_router
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,8 @@ def create_app() -> FastAPI:
     # Routers
     application.include_router(auth_router)
     application.include_router(trends_router)
+    application.include_router(import_router)
+    application.include_router(admin_router)
 
     @application.on_event("startup")
     async def _startup() -> None:

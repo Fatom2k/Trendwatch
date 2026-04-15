@@ -60,6 +60,18 @@
                     group-hover:opacity-100 group-hover:scale-x-100
                     transition-all duration-300 origin-left rounded-full"></div>
       </a>
+
+      {# Admin Link (Admin only) #}
+      <a href="/admin"
+         class="nav-link {% if request.url.path == '/admin' %}active{% endif %}
+                px-4 py-2 rounded-lg font-mono text-sm transition duration-200
+                relative group">
+        <span class="relative z-10">Admin</span>
+        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-500 to-transparent
+                    {% if request.url.path == '/admin' %}opacity-100 scale-x-100{% else %}opacity-0 scale-x-0{% endif %}
+                    group-hover:opacity-100 group-hover:scale-x-100
+                    transition-all duration-300 origin-left rounded-full"></div>
+      </a>
       {% endif %}
     </div>
 
@@ -155,6 +167,12 @@
                 {% if request.url.path == '/import' %}bg-cyan-500/10 text-cyan-400{% endif %}
                 transition font-mono text-sm">
         ➕ Import
+      </a>
+      <a href="/admin"
+         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-red-400
+                {% if request.url.path == '/admin' %}bg-red-500/10 text-red-400{% endif %}
+                transition font-mono text-sm">
+        🔐 Admin
       </a>
       {% endif %}
       <div class="border border-slate-700/30 my-2"></div>
