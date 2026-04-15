@@ -1,15 +1,16 @@
-"""Routes de gestion des tendances : dashboard et ajout manuel."""
+"""Routes de gestion des tendances : dashboard, visualisations et ajout manuel."""
 
 from __future__ import annotations
 
 import logging
 from typing import List
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, Query, Request
 from fastapi.responses import RedirectResponse
 
 from config.settings import Settings
 from sources.base import Trend
+from visualizers import get_visualizer, list_visualizers, VizContext
 from web.auth import admin_required, get_current_user, login_required
 from web.templates_config import templates
 
@@ -185,6 +186,67 @@ async def trends_explorer(request: Request):
             "trends": trends,
             "total_trends": len(trends),
             "es_status": es_status,
+        },
+    )
+
+
+@router.get("/data")
+async def data_view(
+    request: Request,
+    source: str = Query("google_trends"),
+    category: str = Query("terms"),
+    geo: str = Query(""),
+    time_range: str = Query(""),
+    search_type: str = Query(""),
+    size: int = Query(50),
+):
+    """Source-specific data visualization (requires login)."""
+    redirect = login_required(request)
+    if redirect:
+        return redirect
+
+    user = get_current_user(request)
+
+    viz_class = get_visualizer(source)
+    if viz_class is None:
+        # Unknown source — redirect to dashboard with a flash message
+        request.session["flash"] = {
+            "type": "error",
+            "message": f"Source inconnue : {source}",
+        }
+        return RedirectResponse(url="/", status_code=302)
+
+    viz = viz_class()
+    ctx = VizContext(
+        source=source,
+        data_category=category,
+        geo=geo,
+        time_range=time_range,
+        search_type=search_type,
+        size=min(size, 500),
+    )
+
+    store = _get_store()
+    viz_data = viz.fetch_data(store, ctx) if store else {
+        "items": [],
+        "total": 0,
+        "source_label": viz.DISPLAY_NAME,
+        "categories": viz.SUPPORTED_CATEGORIES,
+        "active_source": source,
+        "active_category": category,
+        "active_geo": geo,
+        "active_time": time_range,
+        "active_search_type": search_type,
+    }
+
+    return templates.TemplateResponse(
+        request,
+        viz.get_template(category),
+        {
+            "request":            request,
+            "user":               user,
+            "available_sources":  list_visualizers(),
+            **viz_data,
         },
     )
 
