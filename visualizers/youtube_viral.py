@@ -65,9 +65,36 @@ class YouTubeViralVisualizer(BaseVisualizer):
             reverse=True,
         )
 
+        # Group items by geo and get top 10 for each
+        geo_groups: Dict[str, List[Dict[str, Any]]] = {}
+        for item in items:
+            geo = item.get("_geo", "WW")
+            if geo not in geo_groups:
+                geo_groups[geo] = []
+            geo_groups[geo].append(item)
+
+        # Sort and truncate to top 10 per geo
+        top_by_geo: Dict[str, List[Dict[str, Any]]] = {}
+        for geo, group in geo_groups.items():
+            # Sort by view_count descending
+            sorted_group = sorted(
+                group,
+                key=lambda x: x.get("data", {}).get("view_count", 0),
+                reverse=True
+            )
+            top_by_geo[geo] = sorted_group[:10]
+
+        # Color palette for charts
+        colors = [
+            "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4",
+            "#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#14b8a6"
+        ]
+
         return {
             "items":           items,
             "total":           len(items),
+            "top_by_geo":      top_by_geo,
+            "colors":          colors,
             "source_label":    self.DISPLAY_NAME,
             "categories":      self.SUPPORTED_CATEGORIES,
             "snapshot_dates":  snapshot_dates,

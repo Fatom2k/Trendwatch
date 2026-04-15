@@ -41,6 +41,8 @@ def _group_by_source_category(trends: List[dict]) -> dict:
 
     for trend in trends:
         source = trend.get("_data_source", "unknown")
+        if source == "youtube_viral":
+            continue
         category = trend.get("_data_category", "unknown")
         key = f"{source}_{category}"
 
@@ -64,6 +66,76 @@ def _group_by_source_category(trends: List[dict]) -> dict:
     return grouped
 
 
+def _prepare_youtube_by_geo(trends: List[dict]) -> dict:
+    """Group YouTube trends by country (geo) for donut visualization.
+
+    Non-WW groups have entries that appear in the WW group removed so that
+    country-specific donuts show truly local content only.
+    """
+    youtube_trends = [t for t in trends if t.get("_data_source") == "youtube_viral"]
+
+    if not youtube_trends:
+        return {}
+
+    by_geo: dict = {}
+    for trend in youtube_trends:
+        geo = trend.get("_geo") or "WW"
+        if geo not in by_geo:
+            by_geo[geo] = []
+        by_geo[geo].append(trend)
+
+    # Build index: video_id → set of country geos where it appears (non-WW)
+    country_appearance: dict = {}
+    for geo, items in by_geo.items():
+        if geo in ("WW", ""):
+            continue
+        for item in items:
+            vid = (item.get("data") or {}).get("video_id")
+            if vid:
+                country_appearance.setdefault(vid, set()).add(geo)
+
+    # Build the set of video_ids present in the worldwide group
+    ww_ids: set = set()
+    for geo_key in ("WW", ""):
+        for item in by_geo.get(geo_key, []):
+            vid = (item.get("data") or {}).get("video_id")
+            if vid:
+                ww_ids.add(vid)
+
+    def _view_count(t: dict) -> int:
+        return t.get("data", {}).get("view_count", 0) if isinstance(t.get("data"), dict) else 0
+
+    for geo in list(by_geo.keys()):
+        group = by_geo[geo]
+        # For country-specific groups, exclude videos already in WW
+        if geo not in ("WW", ""):
+            group = [
+                t for t in group
+                if (t.get("data") or {}).get("video_id") not in ww_ids
+            ]
+        group.sort(key=_view_count, reverse=True)
+        by_geo[geo] = group[:10]
+        # Drop the group entirely if it has no unique content
+        if not by_geo[geo]:
+            del by_geo[geo]
+
+    # Annotate WW items with the country geos where they also appear
+    for geo_key in ("WW", ""):
+        for item in by_geo.get(geo_key, []):
+            vid = (item.get("data") or {}).get("video_id")
+            item["_also_in"] = sorted(country_appearance.get(vid, set()))
+
+    # Return ordered dict: WW/FR first, then remaining geos alphabetically
+    priority = ["", "WW", "FR"]
+    ordered: dict = {}
+    for key in priority:
+        if key in by_geo:
+            ordered[key] = by_geo[key]
+    for key in sorted(k for k in by_geo if k not in priority):
+        ordered[key] = by_geo[key]
+    return ordered
+
+
 @router.get("/")
 async def dashboard(request: Request):
     redirect = login_required(request)
@@ -74,24 +146,33 @@ async def dashboard(request: Request):
     is_admin = user.get("role") == "admin"
 
     grouped_data: dict = {}
+    youtube_by_geo: dict = {}
     store = _get_store()
     if store:
         try:
             # Fetch all trends (or reasonable limit like 1000)
             all_trends = store.search(size=1000)
             grouped_data = _group_by_source_category(all_trends)
+            youtube_by_geo = _prepare_youtube_by_geo(all_trends)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Erreur fetch tendances : %s", exc)
+
+    donut_colors = [
+        "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4",
+        "#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#14b8a6"
+    ]
 
     return templates.TemplateResponse(
         request,
         "dashboard.html",
         {
-            "request":      request,
-            "user":         user,
-            "is_admin":     is_admin,
-            "grouped_data": grouped_data,
-            "flash":        request.session.pop("flash", None),
+            "request":         request,
+            "user":            user,
+            "is_admin":        is_admin,
+            "grouped_data":    grouped_data,
+            "youtube_by_geo":  youtube_by_geo,
+            "donut_colors":    donut_colors,
+            "flash":           request.session.pop("flash", None),
         },
     )
 
