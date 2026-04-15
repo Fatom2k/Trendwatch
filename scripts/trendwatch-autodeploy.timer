@@ -1,0 +1,32 @@
+# scripts/trendwatch-autodeploy.timer
+#
+# Timer systemd : déclenche le service de déploiement toutes les 5 minutes.
+#
+# Installation complète (depuis la racine du projet) :
+#
+#   sudo cp scripts/trendwatch-autodeploy.service /etc/systemd/system/
+#   sudo cp scripts/trendwatch-autodeploy.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now trendwatch-autodeploy.timer
+#
+# Commandes utiles :
+#   sudo systemctl status  trendwatch-autodeploy.timer    # état du timer
+#   sudo systemctl list-timers --all | grep trendwatch    # prochain déclenchement
+#   journalctl -u trendwatch-autodeploy -f                # logs en direct
+#   sudo systemctl start trendwatch-autodeploy            # déclenchement manuel
+
+[Unit]
+Description=TrendWatch — timer de déploiement automatique (toutes les 5 min)
+
+[Timer]
+# Délai initial après le boot (laisse le temps aux services de démarrer)
+OnBootSec=2min
+
+# Périodicité après chaque exécution
+OnUnitActiveSec=5min
+
+# Déclenche immédiatement si le timer aurait dû s'activer pendant que la machine était éteinte
+Persistent=true
+
+[Install]
+WantedBy=timers.target
