@@ -16,11 +16,12 @@ from typing import Dict, List, Optional, Type
 
 from visualizers.base import BaseVisualizer, VizContext
 from visualizers.google_trends import GoogleTrendsVisualizer
+from visualizers.youtube_viral import YouTubeViralVisualizer
 
 _REGISTRY: Dict[str, Type[BaseVisualizer]] = {
     GoogleTrendsVisualizer.SOURCE_KEY: GoogleTrendsVisualizer,
+    YouTubeViralVisualizer.SOURCE_KEY:  YouTubeViralVisualizer,
     # "pinterest": PinterestVisualizer,
-    # "tiktok_csv": TikTokVisualizer,
 }
 
 

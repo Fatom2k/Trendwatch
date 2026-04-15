@@ -16,7 +16,10 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 from config.settings import Settings
-from importers import get_importer, list_sources, ImportContext
+from importers import (
+    get_importer, list_sources, ImportContext,
+    get_fetcher, list_fetchers, FetchContext, QuotaExhaustedError,
+)
 from storage.elasticsearch import TrendStore
 from web.auth import admin_required, get_current_user
 from web.templates_config import templates
@@ -24,6 +27,103 @@ from web.templates_config import templates
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/import", tags=["import"])
+
+
+@router.post("/fetch")
+async def api_fetch(
+    request: Request,
+    source: str = Form("youtube_viral"),
+    data_category: str = Form("trending"),
+    geo: str = Form("FR"),
+    max_results: int = Form(50),
+):
+    """Trigger a live API fetch and index results into Elasticsearch (admin only)."""
+    redirect = admin_required(request)
+    if redirect:
+        return JSONResponse(
+            {"error": "Unauthorized", "details": "Admin access required"},
+            status_code=403,
+        )
+
+    fetcher_class = get_fetcher(source)
+    if fetcher_class is None:
+        return JSONResponse(
+            {
+                "error": f"Unsupported source: '{source}'",
+                "details": f"Available: {[f['key'] for f in list_fetchers()]}",
+            },
+            status_code=400,
+        )
+
+    context = FetchContext(
+        source=source,
+        data_category=data_category,
+        geo=geo,
+        fetched_at=datetime.now(timezone.utc).isoformat(),
+        extra={"max_results": min(max_results, 50)},
+    )
+
+    fetcher = fetcher_class()
+
+    errors = fetcher.validate_context(context)
+    if errors:
+        return JSONResponse({"error": errors[0]}, status_code=400)
+
+    try:
+        raw_items = fetcher.fetch(context)
+    except QuotaExhaustedError as exc:
+        logger.warning("YouTube quota exhausted: %s", exc)
+        return JSONResponse(
+            {"error": "Quota API épuisé", "details": str(exc)},
+            status_code=429,
+        )
+    except Exception as exc:
+        logger.error("API fetch failed (%s): %s", source, exc)
+        return JSONResponse(
+            {"error": "Fetch failed", "details": str(exc)},
+            status_code=500,
+        )
+
+    if not raw_items:
+        return JSONResponse(
+            {"error": "Aucun résultat retourné par l'API"},
+            status_code=400,
+        )
+
+    settings = Settings()
+    store = TrendStore(
+        host=settings.elasticsearch_host,
+        index_name=settings.elasticsearch_index,
+    )
+    store.ensure_index()
+
+    imported_count = 0
+    for idx, item in enumerate(raw_items, start=1):
+        try:
+            doc = fetcher.build_document(item, idx, context)
+            store.index_document(doc)
+            imported_count += 1
+        except Exception as exc:
+            logger.warning("Failed to index item %d from '%s': %s", idx, source, exc)
+
+    quota_used = getattr(fetcher, "_units_consumed", 0)
+    logger.info(
+        "API fetch complete: %d documents indexed (source=%s, geo=%s, quota_used=%d)",
+        imported_count, source, geo, quota_used,
+    )
+
+    return JSONResponse(
+        {
+            "success":       True,
+            "message":       f"✅ {imported_count} vidéos importées ({geo or 'Mondial'})",
+            "count":         imported_count,
+            "source":        source,
+            "data_category": data_category,
+            "geo":           geo or "WW",
+            "quota_used":    quota_used,
+        },
+        status_code=200,
+    )
 
 
 @router.get("")

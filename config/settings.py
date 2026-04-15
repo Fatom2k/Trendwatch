@@ -119,6 +119,13 @@ class Settings:
     exploding_topics_category: str = _env("EXPLODING_TOPICS_CATEGORY", "")
 
     # ------------------------------------------------------------------
+    # YouTube Data API v3
+    # ------------------------------------------------------------------
+    youtube_api_key: str = _env("YOUTUBE_API_KEY", "")
+    youtube_quota_daily_limit: int = _env_int("YOUTUBE_QUOTA_DAILY_LIMIT", 10_000)
+    youtube_max_results: int = _env_int("YOUTUBE_MAX_RESULTS", 50)
+
+    # ------------------------------------------------------------------
     # Elasticsearch
     # ------------------------------------------------------------------
     elasticsearch_host: str = _env("ELASTICSEARCH_HOST", "http://localhost:9200")

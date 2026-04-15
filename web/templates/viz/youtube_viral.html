@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}{{ source_label }} — TrendWatch{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-8">
+  <div class="flex items-center gap-3 mb-2">
+    <h2 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+      ▶ {{ source_label }}
+    </h2>
+    <span class="text-xs px-3 py-1 bg-red-500/20 text-red-300 rounded-full font-medium">
+      {{ active_category | title }}
+    </span>
+  </div>
+  <p class="text-slate-400 text-sm">
+    {{ total }} vidéo{% if total != 1 %}s{% endif %}
+    {% if active_geo %} · {{ active_geo }}{% else %} · Mondial{% endif %}
+    {% if snapshot_dates %} · {{ snapshot_dates | length }} snapshot{% if snapshot_dates | length != 1 %}s{% endif %}{% endif %}
+  </p>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" action="/data" class="mb-8 flex flex-wrap gap-3 items-end">
+  <input type="hidden" name="source"   value="{{ active_source }}" />
+  <input type="hidden" name="category" value="{{ active_category }}" />
+
+  <!-- Geo -->
+  <div>
+    <label class="block text-xs text-slate-400 mb-1 font-medium">Géographie</label>
+    <select name="geo" onchange="this.form.submit()"
+            class="bg-slate-800 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-red-500 focus:border-red-500">
+      <option value=""  {% if not active_geo %}selected{% endif %}>🌍 Mondial</option>
+      <option value="FR" {% if active_geo == "FR" %}selected{% endif %}>🇫🇷 France</option>
+      <option value="US" {% if active_geo == "US" %}selected{% endif %}>🇺🇸 États-Unis</option>
+      <option value="GB" {% if active_geo == "GB" %}selected{% endif %}>🇬🇧 Royaume-Uni</option>
+      <option value="DE" {% if active_geo == "DE" %}selected{% endif %}>🇩🇪 Allemagne</option>
+    </select>
+  </div>
+
+  <!-- Snapshot selector (client-side filter) -->
+  {% if snapshot_dates | length > 1 %}
+  <div>
+    <label class="block text-xs text-slate-400 mb-1 font-medium">Snapshot</label>
+    <select id="snapshot-filter"
+            class="bg-slate-800 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-red-500 focus:border-red-500">
+      <option value="">Tous</option>
+      {% for date in snapshot_dates %}
+      <option value="{{ date }}">{{ date }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {% if user and user.role == "admin" %}
+  <!-- Quick fetch form -->
+  <form id="fetch-form-header" class="flex gap-2 items-end ml-auto">
+    <select name="geo" id="fetch-geo-header"
+            class="bg-slate-800 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2">
+      <option value="FR">🇫🇷 France</option>
+      <option value="">🌍 Mondial</option>
+    </select>
+    <button type="button" onclick="triggerFetch()"
+            class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition flex items-center gap-2">
+      <span id="fetch-icon">▶</span> <span id="fetch-label">Fetch maintenant</span>
+    </button>
+  </form>
+  {% endif %}
+</form>
+
+<!-- Status message for fetch -->
+<div id="fetch-message" class="mb-6 hidden"></div>
+
+<!-- Cards Grid -->
+{% if items %}
+<div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+  {% for item in items %}
+  {% set video_id = item.data.video_id if item.data else "" %}
+  {% set snap = item._snapshot_at[:10] if item._snapshot_at else "" %}
+  <a href="https://www.youtube.com/watch?v={{ video_id }}"
+     target="_blank" rel="noopener noreferrer"
+     class="card-item group relative flex flex-col rounded-xl overflow-hidden
+            bg-slate-900/40 backdrop-blur-md border border-slate-700/50
+            hover:border-red-500/40 transition duration-300"
+     data-snapshot="{{ snap }}">
+
+    <!-- Rank badge -->
+    <div class="absolute top-2 left-2 z-10 text-xs font-bold px-2 py-1 rounded
+                bg-slate-900/80 text-slate-300 tabular-nums">
+      #{{ loop.index }}
+    </div>
+
+    <!-- Geo badge -->
+    <div class="absolute top-2 right-2 z-10 text-xs px-2 py-1 rounded
+                bg-slate-900/80 text-slate-400 font-mono">
+      {{ item._geo or "WW" }}
+    </div>
+
+    <!-- Thumbnail -->
+    {% if item.data and item.data.thumbnail_url %}
+    <div class="relative overflow-hidden bg-slate-800 aspect-video">
+      <img src="{{ item.data.thumbnail_url }}"
+           alt="{{ item.title }}"
+           class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+           loading="lazy" />
+      <!-- Play overlay -->
+      <div class="absolute inset-0 flex items-center justify-center
+                  bg-black/0 group-hover:bg-black/30 transition duration-300">
+        <div class="w-12 h-12 rounded-full bg-red-600/90 flex items-center justify-center
+                    opacity-0 group-hover:opacity-100 transition duration-300 translate-y-2 group-hover:translate-y-0">
+          <span class="text-white text-lg ml-1">▶</span>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="aspect-video bg-slate-800 flex items-center justify-center text-slate-600">
+      <span class="text-4xl">▶</span>
+    </div>
+    {% endif %}
+
+    <!-- Content -->
+    <div class="flex flex-col flex-1 p-4">
+      <!-- Title -->
+      <h3 class="text-sm font-semibold text-slate-100 group-hover:text-red-300 transition
+                 line-clamp-2 mb-2 leading-snug">
+        {{ item.title | default("Sans titre") }}
+      </h3>
+
+      <!-- Channel -->
+      {% if item.data and item.data.channel_title %}
+      <p class="text-xs text-slate-500 mb-3 truncate">
+        {{ item.data.channel_title }}
+      </p>
+      {% endif %}
+
+      <!-- Stats -->
+      {% if item.data %}
+      <div class="mt-auto flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        {% if item.data.view_count is defined %}
+        <span class="text-emerald-400 font-semibold tabular-nums">
+          {{ "{:,}".format(item.data.view_count | int) }} vues
+        </span>
+        {% endif %}
+        {% if item.data.like_count is defined and item.data.like_count %}
+        <span class="text-slate-400 tabular-nums">
+          👍 {{ "{:,}".format(item.data.like_count | int) }}
+        </span>
+        {% endif %}
+        {% if item.data.comment_count is defined and item.data.comment_count %}
+        <span class="text-slate-400 tabular-nums">
+          💬 {{ "{:,}".format(item.data.comment_count | int) }}
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Snapshot date -->
+      {% if snap %}
+      <p class="text-xs text-slate-600 mt-2">{{ snap }}</p>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty state -->
+<div class="relative group">
+  <div class="absolute -inset-0.5 bg-gradient-to-r from-red-700/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 blur-lg transition duration-500"></div>
+  <div class="relative bg-slate-900/40 backdrop-blur-md border border-dashed border-slate-600/50 rounded-xl p-16 text-center">
+    <div class="text-5xl mb-4 opacity-50">▶</div>
+    <p class="text-slate-400 font-medium">Aucune vidéo YouTube en base</p>
+    <p class="text-slate-500 text-sm mt-2">
+      Utilisez le bouton ci-dessus ou la page Import pour récupérer les vidéos virales.
+    </p>
+    {% if user and user.role == "admin" %}
+    <div class="mt-6 flex gap-3 justify-center">
+      <button onclick="triggerFetch()"
+              class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition">
+        ▶ Fetch YouTube Viral
+      </button>
+      <a href="/import"
+         class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition">
+        📥 Page Import
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+  // -----------------------------------------------------------------------
+  // Client-side snapshot filter
+  // -----------------------------------------------------------------------
+  const snapshotFilter = document.getElementById('snapshot-filter');
+  if (snapshotFilter) {
+    snapshotFilter.addEventListener('change', () => {
+      const selected = snapshotFilter.value;
+      document.querySelectorAll('.card-item').forEach(card => {
+        if (!selected || card.dataset.snapshot === selected) {
+          card.style.display = '';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  }
+
+  // -----------------------------------------------------------------------
+  // Quick fetch trigger
+  // -----------------------------------------------------------------------
+  async function triggerFetch() {
+    const geoEl = document.getElementById('fetch-geo-header');
+    const geo   = geoEl ? geoEl.value : 'FR';
+    const msgDiv = document.getElementById('fetch-message');
+    const icon   = document.getElementById('fetch-icon');
+    const label  = document.getElementById('fetch-label');
+
+    if (icon)  icon.textContent  = '⏳';
+    if (label) label.textContent = 'Fetch en cours…';
+
+    try {
+      const formData = new FormData();
+      formData.append('source',        'youtube_viral');
+      formData.append('data_category', 'trending');
+      formData.append('geo',           geo);
+      formData.append('max_results',   '50');
+
+      const resp = await fetch('/import/fetch', { method: 'POST', body: formData });
+      const data = await resp.json();
+
+      if (msgDiv) {
+        msgDiv.classList.remove('hidden');
+        if (resp.ok) {
+          msgDiv.innerHTML = `
+            <div class="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-300 text-sm">
+              ✅ ${data.message} — Quota utilisé : ${data.quota_used} unités
+              <a href="/data?source=youtube_viral&geo=${geo}" class="ml-3 underline hover:text-emerald-200">Voir les données →</a>
+            </div>`;
+        } else {
+          msgDiv.innerHTML = `
+            <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">
+              ❌ ${data.error}<br><span class="text-red-400 text-xs">${data.details || ''}</span>
+            </div>`;
+        }
+      }
+    } catch (err) {
+      if (msgDiv) {
+        msgDiv.classList.remove('hidden');
+        msgDiv.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">❌ Erreur réseau : ${err.message}</div>`;
+      }
+    } finally {
+      if (icon)  icon.textContent  = '▶';
+      if (label) label.textContent = 'Fetch maintenant';
+    }
+  }
+</script>
+{% endblock %}
