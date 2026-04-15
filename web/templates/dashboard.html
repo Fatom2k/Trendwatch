@@ -10,6 +10,66 @@
   <p class="text-slate-400">Real-time trend monitoring &amp; intelligence</p>
 </div>
 
+<!-- YouTube Viral Videos - Donut Charts by Country -->
+{% if youtube_by_geo %}
+<div class="mb-12">
+  <h3 class="text-2xl font-bold text-slate-100 mb-6">▶ YouTube Viral Videos</h3>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {% for geo, videos in youtube_by_geo.items() %}
+    <div class="group relative">
+      <div class="absolute -inset-0.5 bg-gradient-to-br from-red-500/10 via-transparent to-pink-500/10 rounded-xl opacity-0 group-hover:opacity-100 blur-lg transition duration-500"></div>
+
+      <div class="relative bg-slate-900/40 backdrop-blur-md border border-slate-700/50 group-hover:border-red-500/30 rounded-xl p-6 transition duration-300">
+        <!-- Header -->
+        <div class="mb-6">
+          <h4 class="text-lg font-bold text-slate-100">
+            {% if geo == "" or geo == "WW" %}🌍 Mondial{% elif geo == "FR" %}🇫🇷 France{% elif geo == "US" %}🇺🇸 États-Unis{% elif geo == "GB" %}🇬🇧 Royaume-Uni{% elif geo == "DE" %}🇩🇪 Allemagne{% else %}{{ geo }}{% endif %}
+            <span class="text-sm font-normal text-slate-400">({{ videos | length }} vidéos)</span>
+          </h4>
+        </div>
+
+        <!-- Chart + Legend -->
+        <div class="flex gap-6 items-start">
+          <!-- Donut Chart -->
+          <div class="flex-shrink-0 w-28">
+            <canvas id="youtube_chart_{{ geo or 'WW' }}"></canvas>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex-1 min-w-0 overflow-y-auto max-h-64 pr-2 space-y-2">
+            {% for video in videos %}
+            <a href="https://www.youtube.com/watch?v={{ video.data.video_id if video.data else '' }}"
+               target="_blank" rel="noopener noreferrer"
+               class="flex gap-2 p-2 rounded-lg hover:bg-slate-800/50 transition group/item cursor-pointer">
+              <div class="flex-shrink-0 w-3 h-3 rounded-full mt-1" style="background-color: {{ donut_colors[loop.index0 % donut_colors|length] }}"></div>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold text-slate-200 group-hover/item:text-red-300 line-clamp-2 transition">
+                  {{ video.title | default("Sans titre") }}
+                </p>
+                <div class="flex flex-wrap items-center gap-1 mt-0.5">
+                  {% if video.data and video.data.view_count %}
+                  <span class="text-xs text-emerald-400 font-semibold">
+                    {{ "{:,}".format(video.data.view_count | int) }} vues
+                  </span>
+                  {% endif %}
+                  {% if video._also_in %}
+                    {% for country in video._also_in %}
+                    <span class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono leading-none" title="Aussi dans {{ country }}">📍{{ country }}</span>
+                    {% endfor %}
+                  {% endif %}
+                </div>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <!-- Trend Visualizations Grid -->
 {% if grouped_data %}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
@@ -68,6 +128,51 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
+  // Donut charts for YouTube by country
+  const youtubeByGeo = {{ youtube_by_geo | tojson | safe }};
+  const donutColors = {{ donut_colors | tojson | safe }};
+
+  document.addEventListener('DOMContentLoaded', () => {
+    Object.entries(youtubeByGeo).forEach(([geo, videos]) => {
+      const geoKey = geo || 'WW';
+      const canvas = document.getElementById(`youtube_chart_${geoKey}`);
+      if (!canvas) return;
+
+      const labels = videos.map(v => (v.title || 'Inconnu').substring(0, 30) + ((v.title || '').length > 30 ? '…' : ''));
+      const data = videos.map(v => (v.data && v.data.view_count) ? v.data.view_count : 0);
+
+      new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: donutColors,
+            borderColor: '#1e293b',
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#f1f5f9',
+              bodyColor: '#cbd5e1',
+              borderColor: 'rgba(239, 68, 68, 0.5)',
+              borderWidth: 1,
+              callbacks: {
+                label: ctx => `${ctx.parsed.toLocaleString()} vues`
+              }
+            }
+          }
+        }
+      });
+    });
+  });
+
   // All grouped data from server
   const groupedData = {{ grouped_data | tojson | safe }};
 

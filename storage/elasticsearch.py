@@ -227,6 +227,70 @@ class TrendStore:
         hits = resp["hits"]["hits"]
         return [hit["_source"] for hit in hits]
 
+    def index_document(self, document: Dict[str, Any]) -> None:
+        """Index a single arbitrary document (CSV imports and raw data).
+
+        Unlike :meth:`index_trend`, this does not require a Trend object.
+        The document is stored as-is with an ES-generated ``_id``.
+
+        Args:
+            document: Any dict following the unified document structure
+                      (must include ``_data_source``, ``_data_category``, etc.).
+        """
+        self._es.index(index=self.index_name, document=document)
+
+    def search_documents(
+        self,
+        data_source: Optional[str] = None,
+        data_category: Optional[str] = None,
+        geo: Optional[str] = None,
+        time_range: Optional[str] = None,
+        search_type: Optional[str] = None,
+        size: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Search raw imported documents (unified ``_data_*`` structure).
+
+        Filters on the metadata fields added by importers.
+        Results are sorted by ``trend`` value descending.
+
+        Args:
+            data_source:   Filter by ``_data_source`` (e.g. ``"google_trends"``).
+            data_category: Filter by ``_data_category`` (e.g. ``"terms"``).
+            geo:           Filter by ``_geo`` (e.g. ``"FR"``).
+            time_range:    Filter by ``_time_range`` (e.g. ``"hours"``).
+            search_type:   Filter by ``_search_type`` (e.g. ``"web"``).
+            size:          Maximum number of results to return.
+
+        Returns:
+            List of document dicts sorted by trend value descending.
+        """
+        must: List[Dict[str, Any]] = []
+
+        if data_source:
+            must.append({"term": {"_data_source.keyword": data_source}})
+        if data_category:
+            must.append({"term": {"_data_category.keyword": data_category}})
+        if geo:
+            must.append({"term": {"_geo.keyword": geo}})
+        if time_range:
+            must.append({"term": {"_time_range.keyword": time_range}})
+        if search_type:
+            must.append({"term": {"_search_type.keyword": search_type}})
+
+        query = {"bool": {"must": must}} if must else {"match_all": {}}
+
+        try:
+            resp = self._es.search(
+                index=self.index_name,
+                query=query,
+                sort=[{"trend": {"order": "desc", "missing": "_last", "unmapped_type": "long"}}],
+                size=size,
+            )
+            return [hit["_source"] for hit in resp["hits"]["hits"]]
+        except Exception as exc:
+            logger.warning("search_documents failed: %s", exc)
+            return []
+
     # ------------------------------------------------------------------
     # Utility
     # ------------------------------------------------------------------

@@ -1,60 +1,88 @@
 # TrendWatch — Roadmap
 
-## Phase 1 — Veille manuelle assistée ✅ (en cours)
+## Phase 1 — Socle technique ✅
 
-**Objectif :** Collecter des tendances depuis des sources gratuites et produire un rapport Markdown lisible.
+- [x] Architecture modulaire (sources, analysis, pipelines, storage)
+- [x] `BaseSource` (ABC) + `Trend` dataclass
+- [x] Connecteurs : Google Trends, TikTok, Instagram, Twitter, Exploding Topics
+- [x] Google Trends V2 — modes `discovery` et `tracking`
+- [x] Scoring multicritère 0–100 (demande / saturation / vélocité)
+- [x] Clustering thématique (TF-IDF + AgglomerativeClustering)
+- [x] Résumés IA via Claude API (`TrendSummarizer`)
+- [x] Export rapports JSON + Markdown
+- [x] APScheduler (cycles horaire / quotidien / hebdo)
 
-- [x] Architecture du projet (sources, analysis, pipelines)
-- [x] Classe abstraite `BaseSource`
-- [x] Connecteur `google_trends.py` (pytrends, gratuit)
-- [x] Scoring multicritère basique (demande / saturation / vélocité)
-- [x] Export rapport Markdown
-- [ ] Connecteur `exploding_topics.py` (tier gratuit)
-- [ ] Rapport HTML statique avec graphiques
+## Phase 2 — Stockage et interface web ✅
 
-## Phase 2 — Automatisation des connecteurs et scheduling
+- [x] `TrendStore` — Elasticsearch single-node (Docker)
+- [x] Interface web FastAPI + Jinja2 + TailwindCSS
+- [x] Authentification Google via Auth0 (OAuth2)
+- [x] Rôles `admin` / `viewer` par whitelist email
+- [x] Dashboard avec visualisations Chart.js par source
+- [x] Formulaire d'ajout manuel de tendances (admin)
+- [x] HTTPS automatique via Caddy + Let's Encrypt
+- [x] `docker-compose.yml` — 4 services (ES, agent, web, caddy)
 
-**Objectif :** Automatiser la collecte sur toutes les sources et planifier les cycles de veille.
+## Phase 3 — Imports et visualisations modulaires ✅
 
-- [ ] Connecteur `tiktok.py` (TikTok Creative Center API)
-- [ ] Connecteur `twitter.py` (X API v2 + trending topics)
-- [ ] Connecteur `instagram.py` (Graph API + SISTRIX)
-- [ ] Scheduling configurable via APScheduler (horaire / quotidien / hebdomadaire)
-- [ ] Stockage persistant des tendances (SQLite ou JSON lines)
-- [ ] Déduplication des tendances inter-sources
+- [x] `BaseImporter` (ABC) + `ImportContext` — pattern imports fichiers
+- [x] `GoogleTrendsCsvImporter` — détection de colonnes fuzzy
+- [x] `BaseVisualizer` (ABC) + `VizContext` — pattern visualisations
+- [x] `GoogleTrendsVisualizer` — tableau filtrable (geo, catégorie, période)
+- [x] Route `GET /data?source=…` — dispatch générique par visualizer
+- [x] Registres `importers/__init__.py` et `visualizers/__init__.py`
+- [x] Import CSV Google Trends (page /import) — admin only
 
-## Phase 3 — Scoring et clustering IA des tendances
+## Phase 4 — YouTube et déploiement continu ✅
 
-**Objectif :** Améliorer la qualité du scoring et regrouper les tendances par thème.
+- [x] `BaseFetcher` (ABC) + `FetchContext` — pattern fetch API live
+- [x] `YouTubeApiFetcher` — YouTube Data API v3 `chart=mostPopular`
+  - Périmètres : France (`regionCode=FR`) et Mondial
+  - Champs : id, titre, chaîne, vues, likes, commentaires, tags, thumbnails
+  - Snapshots horodatés pour suivi temporel
+  - Gestion quota (100 unités/appel, warning 80%, QuotaExhaustedError 100%)
+- [x] `YouTubeViralVisualizer` — grille de cards avec sélecteur de snapshots
+- [x] Route `POST /import/fetch` — déclenchement manuel (admin only)
+- [x] Auto-deploy systemd (timer 5 min, tag `dev`/`prod`)
+- [x] `scripts/migrate_env.sh` — migration .env sans perte
 
-- [ ] Scoring avancé avec pondération configurable par plateforme
-- [ ] Clustering thématique (embeddings + k-means ou HDBSCAN)
-- [ ] Résumé IA des tendances via API Claude (`claude-sonnet-4-20250514`)
-- [ ] Détection des tendances cross-platform (même sujet sur plusieurs sources)
-- [ ] Alertes sur les tendances à vélocité élevée
+## Phase 5 — Consolidation et qualité 🔄 (en cours)
 
-## Phase 4 — Intégration pipeline contenu dématérialisé
+- [ ] Tests automatiques dans `auto-deploy.sh` (bloquer si pytest KO)
+- [ ] Tests unitaires pour `importers/` et `visualizers/`
+- [ ] Sources/youtube_viral.py — intégration dans le scheduler agent
+- [ ] Connecteur Trakt.tv (streaming Netflix/Prime)
+- [ ] Page d'exploration des tendances avec filtres avancés
+- [ ] Comparaison de snapshots YouTube (delta vues entre deux fetches)
+- [ ] Rapport HTML statique avec graphiques exportable
 
-**Objectif :** Connecter TrendWatch à des outils de création de contenu automatique.
+## Phase 6 — Pipelines de contenu 📋
 
-- [ ] Génération de briefs de contenu (format Markdown structuré)
-- [ ] Génération de scripts de Reels / TikToks
-- [ ] Génération de threads X
-- [ ] Génération de légendes Instagram avec hashtags optimisés
-- [ ] Intégration avec des outils no-code (Zapier, Make)
+- [ ] Génération de briefs de contenu (Markdown structuré)
+- [ ] Génération de scripts Reels / TikToks via Claude API
+- [ ] Génération de threads X avec hashtags optimisés
+- [ ] Génération de légendes Instagram
 - [ ] Webhook de sortie configurable
+- [ ] Intégration no-code (Zapier / Make)
 
-## Phase 5 — Intégration pipeline contenu matérialisé (shops, POD)
+## Phase 7 — Contenu physique (POD / Shops) 📋
 
-**Objectif :** Transformer les tendances en opportunités de produits physiques.
-
-- [ ] Suggestion de niche produit basée sur les tendances détectées
-- [ ] Génération de briefs de design pour print-on-demand
-- [ ] Intégration Printful API (création de produits)
+- [ ] Suggestion de niche produit basée sur les tendances
+- [ ] Briefs de design pour print-on-demand
+- [ ] Intégration Printful API
 - [ ] Intégration Printify API
-- [ ] Intégration Shopify (publication automatique de produits)
-- [ ] Tableau de bord de suivi des tendances → ventes
+- [ ] Intégration Shopify (publication automatique)
+- [ ] Dashboard tendances → ventes
 
 ---
 
-> Les phases sont itératives. Les retours terrain peuvent modifier les priorités.
+## Versions
+
+| Version | Contenu |
+|---|---|
+| `v0.1.0` | Interface web, Auth0, Elasticsearch, CSV import |
+| `v0.2.0` | Modularisation imports/visualizers |
+| `v0.2.1` | Auto-deploy systemd |
+| `v0.3.0` | YouTube Viral Videos (BaseFetcher) |
+
+> Les phases sont itératives. La validation terrain conditionne les priorités.

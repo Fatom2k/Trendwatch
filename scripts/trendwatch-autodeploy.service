@@ -1,0 +1,29 @@
+# scripts/trendwatch-autodeploy.service
+#
+# Unité systemd de type "oneshot" : exécutée par le timer associé.
+# Installation :
+#   sudo cp scripts/trendwatch-autodeploy.service /etc/systemd/system/
+#   (voir trendwatch-autodeploy.timer pour la périodicité)
+
+[Unit]
+Description=TrendWatch — vérification et déploiement automatique
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+
+# Adapter le chemin si le projet n'est pas dans /home/fatom/Trendwatch
+WorkingDirectory=/home/fatom/Trendwatch
+
+# L'utilisateur qui lance docker compose (doit être dans le groupe docker)
+User=fatom
+
+ExecStart=/bin/bash /home/fatom/Trendwatch/scripts/auto-deploy.sh
+
+# Journalisation via journald (accessible avec : journalctl -u trendwatch-autodeploy)
+StandardOutput=journal
+StandardError=journal
+
+# Ne pas relancer si le script échoue — le timer retentera au prochain tick
+Restart=no

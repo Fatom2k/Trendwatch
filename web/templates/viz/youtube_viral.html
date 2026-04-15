@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}{{ source_label }} — TrendWatch{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Header -->
+<div class="mb-8">
+  <div class="flex items-center gap-3 mb-2">
+    <h2 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+      ▶ {{ source_label }}
+    </h2>
+    <span class="text-xs px-3 py-1 bg-red-500/20 text-red-300 rounded-full font-medium">
+      {{ active_category | title }}
+    </span>
+  </div>
+  <p class="text-slate-400 text-sm">
+    {{ total }} vidéo{% if total != 1 %}s{% endif %}
+    {% if snapshot_dates %} · {{ snapshot_dates | length }} snapshot{% if snapshot_dates | length != 1 %}s{% endif %}{% endif %}
+  </p>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" action="/data" class="mb-8 flex flex-wrap gap-3 items-end">
+  <input type="hidden" name="source"   value="{{ active_source }}" />
+  <input type="hidden" name="category" value="{{ active_category }}" />
+
+  <!-- Snapshot selector (client-side filter) -->
+  {% if snapshot_dates | length > 1 %}
+  <div>
+    <label class="block text-xs text-slate-400 mb-1 font-medium">Snapshot</label>
+    <select id="snapshot-filter"
+            class="bg-slate-800 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-red-500 focus:border-red-500">
+      <option value="">Tous</option>
+      {% for date in snapshot_dates %}
+      <option value="{{ date }}">{{ date }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {% if user and user.role == "admin" %}
+  <!-- Quick fetch form -->
+  <form id="fetch-form-header" class="flex gap-2 items-end ml-auto">
+    <select name="geo" id="fetch-geo-header"
+            class="bg-slate-800 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2">
+      <option value="FR">🇫🇷 France</option>
+      <option value="US">🇺🇸 États-Unis</option>
+      <option value="">🌍 Mondial</option>
+    </select>
+    <button type="button" onclick="triggerFetch()"
+            class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition flex items-center gap-2">
+      <span id="fetch-icon">▶</span> <span id="fetch-label">Fetch maintenant</span>
+    </button>
+  </form>
+  {% endif %}
+</form>
+
+<!-- Status message for fetch -->
+<div id="fetch-message" class="mb-6 hidden"></div>
+
+<!-- Donut Charts Grid -->
+{% if top_by_geo %}
+<div id="charts-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+  {% for geo, videos in top_by_geo.items() | sort %}
+  <div class="bg-slate-900/40 backdrop-blur-md border border-slate-700/50 rounded-xl p-6">
+    <!-- Country Header -->
+    <h3 class="text-lg font-semibold text-slate-100 mb-4">
+      {% if geo == "WW" %}🌍 Mondial{% elif geo == "FR" %}🇫🇷 France{% elif geo == "US" %}🇺🇸 États-Unis{% elif geo == "GB" %}🇬🇧 Royaume-Uni{% elif geo == "DE" %}🇩🇪 Allemagne{% else %}{{ geo }}{% endif %}
+      <span class="text-sm font-normal text-slate-400">({{ videos | length }} vidéos)</span>
+    </h3>
+
+    <div class="flex gap-6">
+      <!-- Chart -->
+      <div class="flex-1 min-w-0">
+        <canvas id="chart-{{ geo }}" class="max-w-xs mx-auto"></canvas>
+      </div>
+
+      <!-- Legend -->
+      <div class="flex-1 overflow-y-auto max-h-96 pr-2">
+        <div class="space-y-2">
+          {% for video in videos %}
+          <a href="https://www.youtube.com/watch?v={{ video.data.video_id if video.data else '' }}"
+             target="_blank" rel="noopener noreferrer"
+             class="flex gap-3 p-2 rounded-lg hover:bg-slate-800/50 transition group cursor-pointer">
+            <div class="flex-shrink-0 w-4 h-4 rounded-full mt-0.5" style="background-color: {{ colors[loop.index0 % colors|length] }}"></div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-semibold text-slate-200 group-hover:text-red-300 line-clamp-2 transition">
+                {{ video.title | default("Sans titre") }}
+              </p>
+              {% if video.data and video.data.channel_title %}
+              <p class="text-xs text-slate-500 truncate">{{ video.data.channel_title }}</p>
+              {% endif %}
+              {% if video.data and video.data.view_count %}
+              <p class="text-xs text-emerald-400 font-semibold">
+                {{ "{:,}".format(video.data.view_count | int) }} vues
+              </p>
+              {% endif %}
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty state -->
+<div class="relative group">
+  <div class="absolute -inset-0.5 bg-gradient-to-r from-red-700/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 blur-lg transition duration-500"></div>
+  <div class="relative bg-slate-900/40 backdrop-blur-md border border-dashed border-slate-600/50 rounded-xl p-16 text-center">
+    <div class="text-5xl mb-4 opacity-50">▶</div>
+    <p class="text-slate-400 font-medium">Aucune vidéo YouTube en base</p>
+    <p class="text-slate-500 text-sm mt-2">
+      Utilisez le bouton ci-dessus ou la page Import pour récupérer les vidéos virales.
+    </p>
+    {% if user and user.role == "admin" %}
+    <div class="mt-6 flex gap-3 justify-center">
+      <button onclick="triggerFetch()"
+              class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition">
+        ▶ Fetch YouTube Viral
+      </button>
+      <a href="/import"
+         class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition">
+        📥 Page Import
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+  // Color palette for charts
+  const colors = [
+    '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
+    '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6'
+  ];
+
+  // Chart data from template context
+  const chartDataByGeo = {
+    {% for geo, videos in top_by_geo.items() %}
+    '{{ geo }}': {
+      labels: [
+        {% for video in videos %}
+        '{{ video.title | replace("'", "\\'") | default("Sans titre") }}'{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ],
+      data: [
+        {% for video in videos %}
+        {{ video.data.view_count if video.data and video.data.view_count else 0 }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  };
+
+  // Initialize charts
+  Object.entries(chartDataByGeo).forEach(([geo, data]) => {
+    const ctx = document.getElementById(`chart-${geo}`);
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.data,
+            backgroundColor: colors,
+            borderColor: '#1e293b',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.label + ': ' + context.parsed + ' vues';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Quick fetch trigger
+  // -----------------------------------------------------------------------
+  async function triggerFetch() {
+    const geoEl = document.getElementById('fetch-geo-header');
+    const geo   = geoEl ? geoEl.value : 'FR';
+    const msgDiv = document.getElementById('fetch-message');
+    const icon   = document.getElementById('fetch-icon');
+    const label  = document.getElementById('fetch-label');
+
+    if (icon)  icon.textContent  = '⏳';
+    if (label) label.textContent = 'Fetch en cours…';
+
+    try {
+      const formData = new FormData();
+      formData.append('source',        'youtube_viral');
+      formData.append('data_category', 'trending');
+      formData.append('geo',           geo);
+      formData.append('max_results',   '50');
+
+      const resp = await fetch('/import/fetch', { method: 'POST', body: formData });
+      const data = await resp.json();
+
+      if (msgDiv) {
+        msgDiv.classList.remove('hidden');
+        if (resp.ok) {
+          msgDiv.innerHTML = `
+            <div class="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-300 text-sm">
+              ✅ ${data.message} — Quota utilisé : ${data.quota_used} unités
+              <a href="/data?source=youtube_viral" class="ml-3 underline hover:text-emerald-200">Voir les données →</a>
+            </div>`;
+        } else {
+          msgDiv.innerHTML = `
+            <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">
+              ❌ ${data.error}<br><span class="text-red-400 text-xs">${data.details || ''}</span>
+            </div>`;
+        }
+      }
+    } catch (err) {
+      if (msgDiv) {
+        msgDiv.classList.remove('hidden');
+        msgDiv.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">❌ Erreur réseau : ${err.message}</div>`;
+      }
+    } finally {
+      if (icon)  icon.textContent  = '▶';
+      if (label) label.textContent = 'Fetch maintenant';
+    }
+  }
+</script>
+{% endblock %}
