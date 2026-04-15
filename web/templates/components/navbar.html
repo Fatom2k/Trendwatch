@@ -1,21 +1,21 @@
 {# Navigation component with active route tracking #}
 <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/40 border-b border-slate-700/50">
-  <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+  <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
 
     <!-- Logo / Branding -->
-    <a href="/" class="flex items-center gap-3 group">
-      <div class="text-3xl">&#128269;</div>
-      <h1 class="text-2xl font-bold tracking-tighter bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent group-hover:from-cyan-300 group-hover:to-cyan-200 transition duration-300">
+    <a href="/" class="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
+      <div class="text-2xl sm:text-3xl">&#128269;</div>
+      <h1 class="text-lg sm:text-2xl font-bold tracking-tighter bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent group-hover:from-cyan-300 group-hover:to-cyan-200 transition duration-300">
         TrendWatch
       </h1>
     </a>
 
     <!-- Desktop Navigation -->
-    <div class="hidden md:flex items-center gap-1">
+    <div class="hidden md:flex items-center gap-0.5 lg:gap-1">
       {# Dashboard Link #}
       <a href="/"
          class="nav-link {% if request.url.path == '/' %}active{% endif %}
-                px-4 py-2 rounded-lg font-mono text-sm transition duration-200
+                px-3 lg:px-4 py-2 rounded-lg font-mono text-xs lg:text-sm transition duration-200
                 relative group">
         <span class="relative z-10">Dashboard</span>
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-transparent
@@ -27,7 +27,7 @@
       {# Trends Explorer Link #}
       <a href="/trends-explorer"
          class="nav-link {% if request.url.path == '/trends-explorer' %}active{% endif %}
-                px-4 py-2 rounded-lg font-mono text-sm transition duration-200
+                px-3 lg:px-4 py-2 rounded-lg font-mono text-xs lg:text-sm transition duration-200
                 relative group">
         <span class="relative z-10">Explore</span>
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-transparent
@@ -39,7 +39,7 @@
       {# Statistics Link #}
       <a href="/statistics"
          class="nav-link {% if request.url.path == '/statistics' %}active{% endif %}
-                px-4 py-2 rounded-lg font-mono text-sm transition duration-200
+                px-3 lg:px-4 py-2 rounded-lg font-mono text-xs lg:text-sm transition duration-200
                 relative group">
         <span class="relative z-10">Stats</span>
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-transparent
@@ -52,7 +52,7 @@
       {% if user and user.get("role") == "admin" %}
       <a href="/import"
          class="nav-link {% if request.url.path == '/import' %}active{% endif %}
-                px-4 py-2 rounded-lg font-mono text-sm transition duration-200
+                px-3 lg:px-4 py-2 rounded-lg font-mono text-xs lg:text-sm transition duration-200
                 relative group">
         <span class="relative z-10">Import</span>
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-transparent
@@ -64,7 +64,7 @@
       {# Admin Link (Admin only) #}
       <a href="/admin"
          class="nav-link {% if request.url.path == '/admin' %}active{% endif %}
-                px-4 py-2 rounded-lg font-mono text-sm transition duration-200
+                px-3 lg:px-4 py-2 rounded-lg font-mono text-xs lg:text-sm transition duration-200
                 relative group">
         <span class="relative z-10">Admin</span>
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-500 to-transparent
@@ -77,10 +77,10 @@
 
     <!-- User Profile & Actions -->
     {% if user %}
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
       <!-- Mobile Menu Button -->
       <button id="mobile-menu-btn"
-              class="md:hidden px-3 py-2 text-slate-400 hover:text-cyan-400 transition"
+              class="md:hidden px-2 py-2 text-slate-400 hover:text-cyan-400 transition"
               aria-label="Toggle menu">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -88,19 +88,19 @@
       </button>
 
       <!-- User Profile -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
         <div class="flex items-center gap-2 hover:opacity-80 transition">
-          <div class="relative group">
+          <div class="relative group flex-shrink-0">
             <img src="{{ user.picture }}" alt="avatar"
-                 class="w-10 h-10 rounded-full ring-2 ring-cyan-500/50 group-hover:ring-cyan-400
+                 class="w-8 sm:w-10 h-8 sm:h-10 rounded-full ring-2 ring-cyan-500/50 group-hover:ring-cyan-400
                         transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.6)]" />
-            <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full
+            <div class="absolute -bottom-1 -right-1 w-3 sm:w-4 h-3 sm:h-4 rounded-full
                         {% if user.role == 'admin' %}bg-amber-500{% else %}bg-cyan-500{% endif %}
                         ring-2 ring-slate-900"></div>
           </div>
 
-          <div class="hidden sm:block">
-            <p class="text-sm font-semibold text-slate-100 font-mono">{{ user.name }}</p>
+          <div class="hidden md:block">
+            <p class="text-xs sm:text-sm font-semibold text-slate-100 font-mono">{{ user.name }}</p>
             <p class="text-xs text-slate-500">
               {% if user.role == 'admin' %}⚡ Admin{% else %}👁️ Viewer{% endif %}
             </p>
@@ -108,16 +108,16 @@
         </div>
 
         <!-- Settings & Logout -->
-        <div class="flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2">
           <a href="/settings"
-             class="px-3 py-2 text-sm text-slate-300 hover:text-cyan-400
+             class="px-2 sm:px-3 py-2 text-sm text-slate-300 hover:text-cyan-400
                     border border-slate-700 hover:border-cyan-500/50
                     rounded-lg hover:bg-cyan-500/5 transition duration-200
                     font-mono">
             ⚙️
           </a>
           <a href="/logout"
-             class="px-3 py-2 text-sm text-slate-300 hover:text-cyan-400
+             class="px-2 sm:px-3 py-2 text-sm text-slate-300 hover:text-cyan-400
                     border border-slate-700 hover:border-cyan-500/50
                     rounded-lg hover:bg-cyan-500/5 transition duration-200
                     font-mono">
@@ -128,10 +128,10 @@
     </div>
     {% else %}
     <a href="/login"
-       class="px-4 py-2 text-slate-300 hover:text-cyan-400
+       class="px-3 sm:px-4 py-2 text-slate-300 hover:text-cyan-400
               border border-slate-700 hover:border-cyan-500/50
               rounded-lg hover:bg-cyan-500/5 transition duration-200
-              font-mono text-sm">
+              font-mono text-xs sm:text-sm">
       Sign In
     </a>
     {% endif %}
@@ -141,50 +141,50 @@
   {% if user %}
   <div id="mobile-drawer"
        class="md:hidden hidden max-h-0 overflow-hidden transition-all duration-300
-              border-t border-slate-700/50 bg-slate-800/50">
-    <div class="px-4 py-4 space-y-2">
+              border-t border-slate-700/50 bg-slate-800/50 w-full">
+    <div class="px-3 sm:px-4 py-3 sm:py-4 space-y-2">
       <a href="/"
-         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
+         class="block px-3 sm:px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
                 {% if request.url.path == '/' %}bg-cyan-500/10 text-cyan-400{% endif %}
-                transition font-mono text-sm">
+                transition font-mono text-xs sm:text-sm">
         📊 Dashboard
       </a>
       <a href="/trends-explorer"
-         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
+         class="block px-3 sm:px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
                 {% if request.url.path == '/trends-explorer' %}bg-cyan-500/10 text-cyan-400{% endif %}
-                transition font-mono text-sm">
+                transition font-mono text-xs sm:text-sm">
         🔍 Explore
       </a>
       <a href="/statistics"
-         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
+         class="block px-3 sm:px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
                 {% if request.url.path == '/statistics' %}bg-cyan-500/10 text-cyan-400{% endif %}
-                transition font-mono text-sm">
+                transition font-mono text-xs sm:text-sm">
         📈 Statistics
       </a>
       {% if user.get("role") == "admin" %}
       <a href="/import"
-         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
+         class="block px-3 sm:px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
                 {% if request.url.path == '/import' %}bg-cyan-500/10 text-cyan-400{% endif %}
-                transition font-mono text-sm">
+                transition font-mono text-xs sm:text-sm">
         ➕ Import
       </a>
       <a href="/admin"
-         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-red-400
+         class="block px-3 sm:px-4 py-2 rounded-lg text-slate-300 hover:text-red-400
                 {% if request.url.path == '/admin' %}bg-red-500/10 text-red-400{% endif %}
-                transition font-mono text-sm">
+                transition font-mono text-xs sm:text-sm">
         🔐 Admin
       </a>
       {% endif %}
       <div class="border border-slate-700/30 my-2"></div>
       <a href="/settings"
-         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
+         class="block px-3 sm:px-4 py-2 rounded-lg text-slate-300 hover:text-cyan-400
                 {% if request.url.path == '/settings' %}bg-cyan-500/10 text-cyan-400{% endif %}
-                transition font-mono text-sm">
+                transition font-mono text-xs sm:text-sm">
         ⚙️ Settings
       </a>
       <a href="/logout"
-         class="block px-4 py-2 rounded-lg text-slate-300 hover:text-red-400
-                transition font-mono text-sm">
+         class="block px-3 sm:px-4 py-2 rounded-lg text-slate-300 hover:text-red-400
+                transition font-mono text-xs sm:text-sm">
         🚪 Sign Out
       </a>
     </div>
